@@ -1,0 +1,14 @@
+{
+  "name": "N64",
+  "type": "EMU",
+  "description": "Nintendo 64 (ParaLLEl N64) GLES3 libretro pak for NextUI",
+  "author": "Pobega",
+  "repo_url": "https://github.com/Pobega/nextui-parallel-n64-pak",
+  "release_filename": "N64.pak.zip",
+  "platforms": [
+    "tg5040",
+    "h700"
+  ],
+  "launch": "launch.sh",
+  "version": "0.1.0"
+}

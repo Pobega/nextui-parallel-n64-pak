@@ -1,0 +1,361 @@
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+index ff800bd2..0ec13f8c 100644
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -285,6 +285,18 @@ int astick_snap_active                    = 0;
+ int astick_snap_max_angle                 = 15;
+ int astick_snap_min_displacement_percent  = 70;
+ int astick_sensitivity                    = 100;
++#define DPAD_ANALOG_DISABLED        0
++#define DPAD_ANALOG_ONLY            1
++#define DPAD_ANALOG_BOTH            2
++#define DPAD_ANALOG_RAMP_INSTANT_MS 0
++#define DPAD_ANALOG_RAMP_FAST_MS    140
++#define DPAD_ANALOG_RAMP_MEDIUM_MS  220
++#define DPAD_ANALOG_RAMP_SLOW_MS    320
++int dpad_to_analog_mode                   = DPAD_ANALOG_DISABLED;
++int dpad_analog_ramp_ms                   = DPAD_ANALOG_RAMP_MEDIUM_MS;
++float dpad_analog_max_frac                = 1.0f;
++static bool dpad_analog_shown             = true;
++static bool dpad_analog_first_run         = true;
+ int first_time                            = 1;
+ static bool frame_latched                 = false; /* a renderer finished a frame this slice */
+ 
+@@ -703,6 +715,8 @@ static bool set_variable_visibility(void)
+     size_t num_options = 0;
+     const char *rdp_plugin_current = "__NULL__";
+     const char *rdp_plugin_prefix = NULL;
++    bool dpad_changed = false;
++    bool dpad_was_shown = dpad_analog_shown;
+ 
+     // If option categories are supported but
+     // the option update display callback is not,
+@@ -711,6 +725,23 @@ static bool set_variable_visibility(void)
+     if (CoreOptionCategoriesSupported && !CoreOptionUpdateDisplayCbSupported)
+         return false;
+ 
++    dpad_analog_shown = true;
++    var.key = CORE_NAME "-dpad-to-analog";
++    var.value = NULL;
++    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && !strcmp(var.value, "disabled"))
++        dpad_analog_shown = false;
++
++    if (dpad_analog_first_run || dpad_analog_shown != dpad_was_shown)
++    {
++        dpad_analog_first_run = false;
++        option_display.visible = dpad_analog_shown;
++        option_display.key = CORE_NAME "-dpad-to-analog-ramp";
++        environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
++        option_display.key = CORE_NAME "-dpad-to-analog-sensitivity";
++        environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
++        dpad_changed = true;
++    }
++
+     // Get current plugin
+     var.key = CORE_NAME "-gfxplugin";
+     var.value = NULL;
+@@ -720,7 +751,7 @@ static bool set_variable_visibility(void)
+     // Check if plugin has changed since last
+     // call of this function
+     if (!strcmp(rdp_plugin_last, rdp_plugin_current))
+-        return false;
++        return dpad_changed;
+ 
+     strncpy(rdp_plugin_last, rdp_plugin_current, sizeof(rdp_plugin_last));
+ 
+@@ -3117,6 +3148,40 @@ void update_variables(bool startup)
+          inputGetKeys_default_descriptor();
+    }
+ 
++   var.key = CORE_NAME "-dpad-to-analog";
++   var.value = NULL;
++   dpad_to_analog_mode = DPAD_ANALOG_DISABLED;
++   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++   {
++      if (!strcmp(var.value, "analog"))
++         dpad_to_analog_mode = DPAD_ANALOG_ONLY;
++      else if (!strcmp(var.value, "both"))
++         dpad_to_analog_mode = DPAD_ANALOG_BOTH;
++   }
++
++   var.key = CORE_NAME "-dpad-to-analog-ramp";
++   var.value = NULL;
++   dpad_analog_ramp_ms = DPAD_ANALOG_RAMP_MEDIUM_MS;
++   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++   {
++      if (!strcmp(var.value, "instant"))
++         dpad_analog_ramp_ms = DPAD_ANALOG_RAMP_INSTANT_MS;
++      else if (!strcmp(var.value, "fast"))
++         dpad_analog_ramp_ms = DPAD_ANALOG_RAMP_FAST_MS;
++      else if (!strcmp(var.value, "slow"))
++         dpad_analog_ramp_ms = DPAD_ANALOG_RAMP_SLOW_MS;
++   }
++
++   var.key = CORE_NAME "-dpad-to-analog-sensitivity";
++   var.value = NULL;
++   dpad_analog_max_frac = 1.0f;
++   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++   {
++      int pct = atoi(var.value);
++      if (pct >= 10 && pct <= 100)
++         dpad_analog_max_frac = (float)pct * 0.01f;
++   }
++
+ 
+    {
+       struct retro_variable pk1var = { "parallel-n64-pak1" };
+diff --git a/libretro/libretro_core_options.h b/libretro/libretro_core_options.h
+index 2812ff50..3a2d6e28 100644
+--- a/libretro/libretro_core_options.h
++++ b/libretro/libretro_core_options.h
+@@ -1527,6 +1527,54 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "disabled"
+     },
++    {
++        CORE_NAME "-dpad-to-analog",
++        "Map D-Pad to Analog Stick",
++        NULL,
++        "Map D-Pad directional inputs to the N64 Control Stick for games that require analog movement on stickless handhelds.",
++        NULL,
++        "input",
++        {
++            { "disabled", "Disabled" },
++            { "analog",   "Control Stick" },
++            { "both",     "Control Stick + D-Pad" },
++            { NULL, NULL },
++        },
++        "disabled"
++    },
++    {
++        CORE_NAME "-dpad-to-analog-ramp",
++        "D-Pad to Analog Ramp Speed",
++        NULL,
++        "Smoothly eases stick deflection along a curve when holding D-Pad (starts at 20% to clear deadzone, snaps to center on release).",
++        NULL,
++        "input",
++        {
++            { "instant", "Instant" },
++            { "fast",    "Fast (140 ms)" },
++            { "medium",  "Medium (220 ms)" },
++            { "slow",    "Slow (320 ms)" },
++            { NULL, NULL },
++        },
++        "medium"
++    },
++    {
++        CORE_NAME "-dpad-to-analog-sensitivity",
++        "D-Pad to Analog Max Deflection",
++        NULL,
++        "Maximum analog stick strength produced by the D-Pad.",
++        NULL,
++        "input",
++        {
++            { "100%", NULL },
++            { "85%",  NULL },
++            { "70%",  NULL },
++            { "55%",  NULL },
++            { "40%",  NULL },
++            { NULL, NULL },
++        },
++        "100%"
++    },
+     {
+         CORE_NAME "-astick-deadzone",
+         "Analog Deadzone",
+diff --git a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
+index 8c5a3d4a..da346338 100644
+--- a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
++++ b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
+@@ -31,6 +31,7 @@
+ #include <math.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <time.h>
+ /* snprintf not available in MSVC 2010 and earlier */
+ #include "api/msvc_compat.h"
+ 
+@@ -44,6 +45,9 @@ extern int astick_sensitivity;
+ extern int astick_snap_active;
+ extern int astick_snap_max_angle;
+ extern int astick_snap_min_displacement_percent;
++extern int dpad_to_analog_mode;
++extern int dpad_analog_ramp_ms;
++extern float dpad_analog_max_frac;
+ extern int r_cbutton;
+ extern int l_cbutton;
+ extern int d_cbutton;
+@@ -63,6 +67,30 @@ extern int vr_aim_btn_up, vr_aim_btn_down, vr_aim_btn_left, vr_aim_btn_right;
+ extern unsigned libretro_vr_aim_dirs(int port);
+ static bool libretro_supports_bitmasks = false;
+ 
++#define DPAD_ANALOG_DISABLED     0
++#define DPAD_ANALOG_ONLY         1
++#define DPAD_ANALOG_BOTH         2
++#define DPAD_ANALOG_START_FRAC   0.20f
++#define DPAD_ANALOG_DEFAULT_DT   16u
++#define DPAD_ANALOG_MAX_DT       50u
++#define DPAD_ANALOG_AXIS_MAX     80.0f
++#define DPAD_ANALOG_AXIS_LIMIT   80
++#define DPAD_ANALOG_MAX_PORTS    4
++
++struct dpad_axis_state
++{
++   int8_t dir;
++   float progress;
++};
++
++struct dpad_analog_state
++{
++   struct dpad_axis_state axis[2];
++   uint64_t last_ms;
++};
++
++static struct dpad_analog_state dpad_analog_state[DPAD_ANALOG_MAX_PORTS];
++
+ extern m64p_rom_header ROM_HEADER;
+ 
+ /* Controller presence values, as written by libretro.c into pad_present[]
+@@ -610,6 +638,108 @@ void inputPollMouse(void)
+    mouse_sampled = false;
+ }
+ 
++static uint64_t dpad_monotonic_ms(void)
++{
++   struct timespec ts;
++   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
++      return 0;
++   return (uint64_t)ts.tv_sec * 1000u + (uint64_t)(ts.tv_nsec / 1000000L);
++}
++
++static float step_dpad_axis(struct dpad_axis_state *axis, int dir, uint32_t dt_ms)
++{
++   float start;
++   float curved;
++   float mag;
++
++   if (dir == 0)
++   {
++      axis->dir = 0;
++      axis->progress = 0.0f;
++      return 0.0f;
++   }
++   if (dpad_analog_ramp_ms <= 0)
++   {
++      axis->dir = (int8_t)dir;
++      axis->progress = 1.0f;
++      return (float)dir * dpad_analog_max_frac;
++   }
++
++   if (axis->dir != dir)
++   {
++      axis->dir = (int8_t)dir;
++      axis->progress = 0.0f;
++   }
++   else
++   {
++      axis->progress += (float)dt_ms / (float)dpad_analog_ramp_ms;
++      if (axis->progress > 1.0f)
++         axis->progress = 1.0f;
++   }
++
++   start = dpad_analog_max_frac < DPAD_ANALOG_START_FRAC
++         ? dpad_analog_max_frac
++         : DPAD_ANALOG_START_FRAC;
++   curved = axis->progress * axis->progress;
++   mag = start + (dpad_analog_max_frac - start) * curved;
++   return (float)dir * mag;
++}
++
++static int8_t scale_dpad_to_n64_axis(float norm_val)
++{
++   float scaled = norm_val * DPAD_ANALOG_AXIS_MAX;
++   long rounded = (long)(scaled >= 0.0f ? scaled + 0.5f : scaled - 0.5f);
++   if (rounded > DPAD_ANALOG_AXIS_LIMIT)
++      rounded = DPAD_ANALOG_AXIS_LIMIT;
++   else if (rounded < -DPAD_ANALOG_AXIS_LIMIT)
++      rounded = -DPAD_ANALOG_AXIS_LIMIT;
++   return (int8_t)rounded;
++}
++
++static void apply_dpad_to_analog(int Control, BUTTONS *Keys)
++{
++   struct dpad_analog_state *st;
++   uint64_t now_ms;
++   uint32_t dt_ms;
++   int dx;
++   int dy;
++   float vx;
++   float vy;
++
++   if (Control < 0 || Control >= DPAD_ANALOG_MAX_PORTS)
++      return;
++
++   st = &dpad_analog_state[Control];
++   if (dpad_to_analog_mode == DPAD_ANALOG_DISABLED)
++   {
++      memset(st, 0, sizeof(*st));
++      return;
++   }
++
++   now_ms = dpad_monotonic_ms();
++   if (st->last_ms == 0)
++      dt_ms = DPAD_ANALOG_DEFAULT_DT;
++   else if (now_ms >= st->last_ms)
++      dt_ms = (uint32_t)(now_ms - st->last_ms);
++   else
++      dt_ms = DPAD_ANALOG_DEFAULT_DT;
++
++   if (dt_ms > DPAD_ANALOG_MAX_DT)
++      dt_ms = DPAD_ANALOG_MAX_DT;
++   st->last_ms = now_ms;
++
++   dx = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_RIGHT) - PAD_HELD(RETRO_DEVICE_ID_JOYPAD_LEFT);
++   dy = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_UP)    - PAD_HELD(RETRO_DEVICE_ID_JOYPAD_DOWN);
++
++   vx = step_dpad_axis(&st->axis[0], dx, dt_ms);
++   vy = step_dpad_axis(&st->axis[1], dy, dt_ms);
++
++   if (dx != 0)
++      Keys->X_AXIS = scale_dpad_to_n64_axis(vx);
++   if (dy != 0)
++      Keys->Y_AXIS = scale_dpad_to_n64_axis(vy);
++}
++
+ /* Shared tail of every control profile: N64 stick, mouse-to-stick mode,
+  * d-pad, Start, and the SELECT-driven profile toggle. */
+ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
+@@ -625,6 +755,8 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
+    Keys->X_AXIS = sx;
+    Keys->Y_AXIS = sy;
+ 
++   apply_dpad_to_analog(Control, Keys);
++
+    /* VR laser - the controller's pointer drives the stick */
+    if (Keys->X_AXIS == 0 && Keys->Y_AXIS == 0)
+    {
+@@ -683,10 +815,20 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
+          apply_mouse_button(Keys, mouse_wheel_down_btn);
+    }
+ 
+-   Keys->R_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+-   Keys->L_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_LEFT);
+-   Keys->D_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_DOWN);
+-   Keys->U_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_UP);
++   if (dpad_to_analog_mode == DPAD_ANALOG_ONLY)
++   {
++      Keys->R_DPAD = 0;
++      Keys->L_DPAD = 0;
++      Keys->D_DPAD = 0;
++      Keys->U_DPAD = 0;
++   }
++   else
++   {
++      Keys->R_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_RIGHT);
++      Keys->L_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_LEFT);
++      Keys->D_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_DOWN);
++      Keys->U_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_UP);
++   }
+ 
+    /* Some Aleck64 games (Eleven Beat) probe the pad's d-pad to detect the
+     * cabinet joystick type and error out unless all four bits read held,

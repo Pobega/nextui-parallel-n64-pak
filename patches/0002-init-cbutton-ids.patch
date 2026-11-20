@@ -1,0 +1,16 @@
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+index ff800bd2..12d49688 100644
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -162,7 +162,10 @@ int frame_break = 0;
+ int g_count_per_scanline = 0;
+ int g_force_parallel_sync = 0;
+ /* controller c-button state + transferpak paths (next libretro globals) */
+-int r_cbutton, l_cbutton, d_cbutton, u_cbutton;
++int r_cbutton = RETRO_DEVICE_ID_JOYPAD_A;
++int l_cbutton = RETRO_DEVICE_ID_JOYPAD_Y;
++int d_cbutton = RETRO_DEVICE_ID_JOYPAD_B;
++int u_cbutton = RETRO_DEVICE_ID_JOYPAD_X;
+ char* retro_transferpak_rom_path = NULL;
+ char* retro_transferpak_ram_path = NULL;
+ 
