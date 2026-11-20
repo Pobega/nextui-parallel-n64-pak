@@ -18,7 +18,7 @@ Supports `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro), `tg5050` (
 
 ## Requirements
 
-- **NextUI** with MinArch OpenGL ES 3 hardware-rendering support (`SET_HW_RENDER`).
+- **NextUI `v6.15.0+`** — this pre-release bundles a patched `minarch.elf` (`SET_HW_RENDER` and the `SND_batchSamples` audio batch frame-count fix) under `bin/$PLATFORM/minarch.elf`, so no NextUI system files need to be replaced.
 - Compatible handheld:
   - **tg5040**: TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro (Allwinner A133p / PowerVR GE8300)
   - **tg5050**: TrimUI Smart Pro S (Allwinner A523 / Mali-G57 MC1)
