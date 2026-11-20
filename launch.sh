@@ -21,4 +21,12 @@ else
 	CORE_SO="$PAK_DIR/${EMU_EXE}_libretro.so"
 fi
 
-minarch.elf "$CORE_SO" "$ROM" > "$LOGS_PATH/$EMU_TAG.txt" 2>&1
+if [ -n "$PLATFORM" ] && [ -f "$PAK_DIR/bin/$PLATFORM/minarch.elf" ]; then
+	MINARCH="$PAK_DIR/bin/$PLATFORM/minarch.elf"
+elif [ -f "$PAK_DIR/minarch.elf" ]; then
+	MINARCH="$PAK_DIR/minarch.elf"
+else
+	MINARCH="minarch.elf"
+fi
+
+"$MINARCH" "$CORE_SO" "$ROM" > "$LOGS_PATH/$EMU_TAG.txt" 2>&1
