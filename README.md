@@ -18,7 +18,7 @@ Supports both `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro) and `h
 
 ## Requirements
 
-- **NextUI `v6.15.0+`** — this pre-release bundles a patched `minarch.elf` (`SET_HW_RENDER` and the `SND_batchSamples` audio batch frame-count fix) under `bin/$PLATFORM/minarch.elf`, so no NextUI system files need to be replaced.
+- **NextUI `v6.15.0+`** — this pre-release bundles a patched `minarch.elf` (`SET_HW_RENDER`, the `SND_batchSamples` audio batch frame-count fix, and Nintendo 64 RetroAchievements console mapping) under `bin/$PLATFORM/minarch.elf`, so no NextUI system files need to be replaced.
 - Compatible handheld:
   - **tg5040**: TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro (Allwinner A133p / PowerVR GE8300)
   - **h700**: Anbernic RG35XX Plus, RG35XX H, RG35XX SP, RG40XX (Allwinner H700 / Mali-G31 MP2)
