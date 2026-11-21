@@ -1,0 +1,55 @@
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -2695,29 +2695,36 @@ void update_variables(bool startup)
+       resample_hq_set_quality(enhanced_taps);
+    }
+ 
+-   var.key   = "parallel-n64-screensize";
+-   var.value = NULL;
+-
+-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++   /* Rice and Glide64 only read parallel-n64-screensize once at startup.
++    * Updating screen_width/screen_height mid-session resizes the outer
++    * framebuffer while the plugin keeps drawing at the boot resolution,
++    * shrinking the image into the bottom-left corner until restart. */
++   if (startup)
+    {
+-      /* TODO/FIXME - hack - force screen width and height back to 640x480 in case
+-       * we change it with Angrylion. If we ever want to support variable resolution sizes in Angrylion
+-       * then we need to drop this. */
+-      if (
++      var.key   = "parallel-n64-screensize";
++      var.value = NULL;
++
++      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++      {
++         /* TODO/FIXME - hack - force screen width and height back to 640x480 in case
++          * we change it with Angrylion. If we ever want to support variable resolution sizes in Angrylion
++          * then we need to drop this. */
++         if (
+ #ifdef HAVE_THR_AL
+-            gfx_plugin == GFX_ANGRYLION || 
++               gfx_plugin == GFX_ANGRYLION || 
+ #endif
+-            sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
++               sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
++         {
++            screen_width  = 640;
++            screen_height = 480;
++         }
++      }
++      else
+       {
+          screen_width  = 640;
+          screen_height = 480;
+       }
+    }
+-   else
+-   {
+-      screen_width  = 640;
+-      screen_height = 480;
+-   }
+ 
+ #ifdef HAVE_GLIDE64
+    /* read at Glide64's window opening: a restart applies it */
