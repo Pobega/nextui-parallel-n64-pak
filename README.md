@@ -69,6 +69,7 @@ Supported formats:
 | **L2** | Z Trigger |
 | **R2** | C-Buttons Mode (hold + **B** for **C-Down**, **Y** for **C-Left**; direct `C-Down`/`C-Left` slots are also available to bind in Controls) |
 | **Start** | Start |
+| **Select** | **Toggle D-Pad/Stick** (enabled on stickless devices; unbound by default on dual-stick devices) |
 | **Menu** | MinArch Quick Menu |
 
 > **Tip (Single-stick / stickless handhelds)**: You can enable **Independent C-button Controls** (`parallel-n64-alt-map = enabled`) in **Options -> Emulator -> Input** (restart required) to map the four C-buttons directly to `X` (C-Up), `A` (C-Down), `L1` (C-Left), and `R1` (C-Right), with `SELECT` as L Trigger and `R2` as R Trigger.
