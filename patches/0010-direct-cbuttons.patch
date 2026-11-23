@@ -1,0 +1,80 @@
+diff --git a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
+index da346338..80dec0a7 100644
+--- a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
++++ b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
+@@ -191,10 +191,12 @@ void inputGetKeys_default_descriptor(void)
+    else
+    {
+       #define standard_map(PAD) \
+-      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,      "A Button (C3)" },\
+-      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,      "B Button (C2)" },\
+-      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,      "(C1)" },\
+-      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,      "(C4)" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,      "A Button (C-Down)" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,      "B Button (C-Left)" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,      "C-Right" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,      "C-Up" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L3,     "C-Down" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3,     "C-Left" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2,     "C Buttons Mode" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2,     "Z Trigger" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R,      "R Shoulder" },\
+@@ -1147,7 +1149,7 @@ static void inputGetKeys_mouse( int Control, BUTTONS *Keys )
+ static void inputGetKeys_default( int Control, BUTTONS *Keys )
+ {
+    bool cbuttons_mode = false;
+-   int16_t ret        = 0;
++   uint16_t ret       = 0;
+    int16_t analogX    = 0;
+    int16_t analogY    = 0;
+    Keys->Value        = 0;
+@@ -1158,9 +1160,9 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
+       return;
+    }
+ 
+-   ret = (int16_t)pad_bits;
++   ret = pad_bits;
+ 
+-   Keys->Z_TRIG       = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_L2)));
++   Keys->Z_TRIG       = !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_L2)));
+ 
+    if (alternate_mapping)
+    {
+@@ -1175,23 +1177,28 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
+    }
+    else
+    {
+-      Keys->R_TRIG    = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_R)));
+-      Keys->L_TRIG    = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_L)));
++      Keys->R_TRIG    = !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_R)));
++      Keys->L_TRIG    = !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_L)));
+ 
+-      cbuttons_mode   = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_R2)));
++      cbuttons_mode   = !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_R2)));
+ 
+       if (cbuttons_mode)
+       {
+-         Keys->R_CBUTTON = !!((ret & (1 << r_cbutton)));
+-         Keys->L_CBUTTON = !!((ret & (1 << l_cbutton)));
+-         Keys->D_CBUTTON = !!((ret & (1 << d_cbutton)));
+-         Keys->U_CBUTTON = !!((ret & (1 << u_cbutton)));
++         Keys->R_CBUTTON = !!((ret & (1U << r_cbutton)));
++         Keys->L_CBUTTON = !!((ret & (1U << l_cbutton)));
++         Keys->D_CBUTTON = !!((ret & (1U << d_cbutton)));
++         Keys->U_CBUTTON = !!((ret & (1U << u_cbutton)));
+       }
+       else
+       {
+-         Keys->A_BUTTON  = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_B)));
+-         Keys->B_BUTTON  = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_Y)));
++         Keys->A_BUTTON  = !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_B)));
++         Keys->B_BUTTON  = !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_Y)));
+       }
++
++      Keys->R_CBUTTON |= !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_A)));
++      Keys->U_CBUTTON |= !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_X)));
++      Keys->D_CBUTTON |= !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_L3)));
++      Keys->L_CBUTTON |= !!((ret & (1U << RETRO_DEVICE_ID_JOYPAD_R3)));
+    }
+ 
+    // C buttons

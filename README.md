@@ -62,12 +62,12 @@ Supported formats:
 | **Right Analog Stick** | C-Buttons (on dual-stick devices) |
 | **B** (South) | A Button (or **C-Down** while holding **R2**) |
 | **Y** (West) | B Button (or **C-Left** while holding **R2**) |
-| **A** (East) | **C-Right** (while holding **R2**) |
-| **X** (North) | **C-Up** (while holding **R2**) |
+| **A** (East) | **C-Right** (direct, or while holding **R2**) |
+| **X** (North) | **C-Up** (direct, or while holding **R2**) |
 | **L1** | L Trigger |
 | **R1** | R Trigger |
 | **L2** | Z Trigger |
-| **R2** | C-Buttons Mode (hold + face buttons) |
+| **R2** | C-Buttons Mode (hold + **B** for **C-Down**, **Y** for **C-Left**; direct `C-Down`/`C-Left` slots are also available to bind in Controls) |
 | **Start** | Start |
 | **Menu** | MinArch Quick Menu |
 
