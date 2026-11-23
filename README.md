@@ -86,6 +86,7 @@ If a game needs extra CPU/GPU headroom on lower-clocked devices, open the MinArc
 - `parallel-n64-disable_expmem = enabled`: Enables 8 MB Expansion Pak RAM.
 - `parallel-n64-pak1 = memory`: Attaches a Controller Pak (MemPak) to Port 1.
 - `parallel-n64-screensize = 320x240`: Native N64 render resolution for handheld GPU performance (raise to `640x480` per game if headroom permits).
+- `parallel-n64-glide64-overscan`: Crops black overscan borders in native 240p lines (`0`–`16` px) with zero extra render pass overhead when using Glide64, supporting both **All Sides (4:3)** and **Top & Bottom Only** (`parallel-n64-glide64-overscan-mode`) aspect modes.
 - `parallel-n64-dpad-to-analog`: Maps D-Pad inputs to the N64 Control Stick (`disabled`, `analog` for Control Stick only, or `both` for Control Stick + D-Pad), with a quadratic ease-in ramp (`parallel-n64-dpad-to-analog-ramp`, defaults to `medium` 220 ms) and max deflection (`parallel-n64-dpad-to-analog-sensitivity`, defaults to `100%`). Enabled (`analog`) by default on `default.cfg`, `default-brick.cfg`, and `default-brickpro.cfg`, and `disabled` on `default-smartpro.cfg` and `default-smartpros.cfg`.
 
 ---

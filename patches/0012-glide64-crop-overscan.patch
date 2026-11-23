@@ -1,0 +1,321 @@
+diff --git a/glide2gl/src/Glitch64/glitch64_combiner.c b/glide2gl/src/Glitch64/glitch64_combiner.c
+index aff61742..50906e75 100644
+--- a/glide2gl/src/Glitch64/glitch64_combiner.c
++++ b/glide2gl/src/Glitch64/glitch64_combiner.c
+@@ -392,16 +392,15 @@ SHADER_HEADER
+ "attribute highp vec4 aColor;          \n"
+ "attribute highp vec4 aMultiTexCoord0; \n"
+ "attribute highp vec4 aMultiTexCoord1; \n"
+-"uniform vec3 vertexOffset;            \n" //Moved some calculations from grDrawXXX to shader
++"uniform vec4 vertexOffset;            \n" //Center (xy) and half-extent (zw) in Glide window coordinates
+ "uniform vec4 textureSizes;            \n"
+ SHADER_VARYING
+ "\n"
+ "void main()\n"
+ "{\n"
+ "  highp float q = aPosition.w;                                                     \n"
+-"  highp float invertY = vertexOffset.z;                                          \n" //Usually 1.0 but -1.0 when rendering to a texture (see inverted_culling grRenderBuffer)
+-"  gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.x;           \n"
+-"  gl_Position.y = invertY *-(aPosition.y - vertexOffset.y) / vertexOffset.y; \n"
++"  gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.z;           \n"
++"  gl_Position.y = -(aPosition.y - vertexOffset.y) / vertexOffset.w;          \n"
+ "  gl_Position.z = aPosition.z / Z_MAX;                                       \n"
+ "  gl_Position.w = 1.0;                                                     \n"
+ "  gl_Position /= q;                                                        \n"
+@@ -839,9 +838,11 @@ static void n64_upload(const shader_program_key *prog)
+ 
+ static void update_uniforms(const shader_program_key *prog)
+ {
++   float cx, cy, rx, ry;
++   glitch64_get_vertex_offset(&cx, &cy, &rx, &ry);
+    glUniform1i(prog->texture0_location, 0);
+    glUniform1i(prog->texture1_location, 1);
+-   glUniform3f(prog->vertexOffset_location, (GLfloat)width / 2.f, (GLfloat)height / 2.f, 1.0f);
++   glUniform4f(prog->vertexOffset_location, cx, cy, rx, ry);
+    glUniform4f(prog->textureSizes_location,
+          (float)tex_width[0], (float)tex_height[0], (float)tex_width[1], (float)tex_height[1]);
+    glUniform4f(prog->exactSizes_location,
+@@ -851,6 +852,11 @@ static void update_uniforms(const shader_program_key *prog)
+    n64_upload(prog);
+ }
+ 
++void glitch64_combiner_invalidate_overscan(void)
++{
++   need_to_compile = 1;
++}
++
+ #ifndef GL_COMPLETION_STATUS_KHR
+ #define GL_COMPLETION_STATUS_KHR 0x91B1
+ #endif
+diff --git a/glide2gl/src/Glitch64/glitchmain.c b/glide2gl/src/Glitch64/glitchmain.c
+index 939f50d2..02edb93d 100644
+--- a/glide2gl/src/Glitch64/glitchmain.c
++++ b/glide2gl/src/Glitch64/glitchmain.c
+@@ -64,6 +64,57 @@ static int isExtensionSupported(const char *extension)
+ /* the window is open: grSstWinOpen closes it first */
+ static int win_open;
+ 
++static int overscan_lines = 0;
++static int overscan_mode  = GLITCH64_OVERSCAN_UNIFORM;
++static uint32_t clip_last[4] = { ~0u, ~0u, ~0u, ~0u };
++
++static int clamp_int(int v, int lo, int hi)
++{
++   if (v < lo)
++      return lo;
++   if (v > hi)
++      return hi;
++   return v;
++}
++
++void glitch64_set_overscan(int lines, int mode)
++{
++   int clamped = clamp_int(lines, 0, GLITCH64_OVERSCAN_MAX_LINES);
++   int normalized_mode = (mode == GLITCH64_OVERSCAN_VERTICAL)
++      ? GLITCH64_OVERSCAN_VERTICAL
++      : GLITCH64_OVERSCAN_UNIFORM;
++
++   if (clamped == overscan_lines && normalized_mode == overscan_mode)
++      return;
++
++   overscan_lines = clamped;
++   overscan_mode  = normalized_mode;
++   clip_last[0] = clip_last[1] = clip_last[2] = clip_last[3] = ~0u;
++   g_gdp.flags |= UPDATE_SCISSOR;
++   glitch64_combiner_invalidate_overscan();
++}
++
++void glitch64_get_vertex_offset(float *cx, float *cy, float *rx, float *ry)
++{
++   float half_w = (float)width * 0.5f;
++   float half_h = (float)height * 0.5f;
++   float crop_y_frac = (float)overscan_lines / GLITCH64_OVERSCAN_REF_HEIGHT;
++   float crop_x_frac = (overscan_mode == GLITCH64_OVERSCAN_UNIFORM) ? crop_y_frac : 0.0f;
++
++   *cx = half_w;
++   *cy = half_h;
++   *rx = half_w * (1.0f - 2.0f * crop_x_frac);
++   *ry = half_h * (1.0f - 2.0f * crop_y_frac);
++}
++
++float glitch64_get_overscan_aspect_scale(void)
++{
++   if (overscan_lines <= 0 || overscan_mode == GLITCH64_OVERSCAN_UNIFORM)
++      return 1.0f;
++   return GLITCH64_OVERSCAN_REF_HEIGHT /
++      (GLITCH64_OVERSCAN_REF_HEIGHT - 2.0f * (float)overscan_lines);
++}
++
+ uint32_t grSstWinOpen(void)
+ {
+    bool ret;
+@@ -72,6 +123,7 @@ uint32_t grSstWinOpen(void)
+    if (win_open)
+       grSstWinClose();
+    win_open = 1;
++   clip_last[0] = clip_last[1] = clip_last[2] = clip_last[3] = ~0u;
+ 
+    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+ 
+@@ -310,8 +362,12 @@ void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
+       /* the default program's other uniforms are never set: the shader
+        * maps window pixels through vertexOffset, and texels through
+        * textureSizes */
+-      location = glGetUniformLocation(program_object_default, "vertexOffset");
+-      glUniform3f(location, (float)width / 2.0f, (float)height / 2.0f, 1.0f);
++      {
++         float cx, cy, rx, ry;
++         glitch64_get_vertex_offset(&cx, &cy, &rx, &ry);
++         location = glGetUniformLocation(program_object_default, "vertexOffset");
++         glUniform4f(location, cx, cy, rx, ry);
++      }
+       location = glGetUniformLocation(program_object_default, "textureSizes");
+       glUniform4f(location, u1, v1, 1.0f, 1.0f);
+ 
+@@ -403,7 +459,11 @@ void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+ 
+    set_depth_shader();
+-   glUniform3f(depth_vertexOffset_location, (float)width / 2.0f, (float)height / 2.0f, 1.0f);
++   {
++      float cx, cy, rx, ry;
++      glitch64_get_vertex_offset(&cx, &cy, &rx, &ry);
++      glUniform4f(depth_vertexOffset_location, cx, cy, rx, ry);
++   }
+ #ifdef MSB_FIRST
+    /* halfwords in order, the high byte first */
+    glUniform4f(depth_exactSizes_location, (float)w, (float)h, 0.0f, 1.0f);
+@@ -465,13 +525,32 @@ void grBufferSwap(void)
+ void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
+ {
+    GLITCH64_VK(vk_grClipWindow(minx, miny, maxx, maxy));
+-   static uint32_t last[4] = { ~0u, ~0u, ~0u, ~0u };
+-   if (minx == last[0] && miny == last[1] && maxx == last[2] && maxy == last[3]
++   if (minx == clip_last[0] && miny == clip_last[1] && maxx == clip_last[2] && maxy == clip_last[3]
+          && glIsEnabled(GL_SCISSOR_TEST))
+       return;
+-   last[0] = minx; last[1] = miny; last[2] = maxx; last[3] = maxy;
++   clip_last[0] = minx; clip_last[1] = miny; clip_last[2] = maxx; clip_last[3] = maxy;
+    glitch64_flush();
+-   glScissor(minx, height - maxy, maxx - minx, maxy - miny);
++   if (overscan_lines == 0)
++   {
++      glScissor(minx, height - maxy, maxx - minx, maxy - miny);
++   }
++   else
++   {
++      float cx, cy, rx, ry;
++      float scale_x, scale_y;
++      int sx0, sx1, sy0, sy1;
++
++      glitch64_get_vertex_offset(&cx, &cy, &rx, &ry);
++      scale_x = (float)width / (2.0f * rx);
++      scale_y = (float)height / (2.0f * ry);
++
++      sx0 = clamp_int((int)floorf(cx + ((float)minx - cx) * scale_x), 0, width);
++      sx1 = clamp_int((int)ceilf(cx + ((float)maxx - cx) * scale_x), sx0, width);
++      sy0 = clamp_int((int)floorf(cy + ((float)miny - cy) * scale_y), 0, height);
++      sy1 = clamp_int((int)ceilf(cy + ((float)maxy - cy) * scale_y), sy0, height);
++
++      glScissor(sx0, height - sy1, sx1 - sx0, sy1 - sy0);
++   }
+    glEnable(GL_SCISSOR_TEST);
+ }
+ 
+diff --git a/glide2gl/src/Glitch64/glitchmain.h b/glide2gl/src/Glitch64/glitchmain.h
+index 03ebfb61..eacea4f9 100644
+--- a/glide2gl/src/Glitch64/glitchmain.h
++++ b/glide2gl/src/Glitch64/glitchmain.h
+@@ -84,6 +84,16 @@ void free_combiners(void);
+ void compile_shader(void);
+ void set_copy_shader(void);
+ 
++#define GLITCH64_OVERSCAN_REF_HEIGHT 240.0f
++#define GLITCH64_OVERSCAN_MAX_LINES  16
++#define GLITCH64_OVERSCAN_UNIFORM    0
++#define GLITCH64_OVERSCAN_VERTICAL   1
++
++void glitch64_set_overscan(int lines, int mode);
++void glitch64_get_vertex_offset(float *cx, float *cy, float *rx, float *ry);
++float glitch64_get_overscan_aspect_scale(void);
++void glitch64_combiner_invalidate_overscan(void);
++
+ //Vertex Attribute Locations
+ #define POSITION_ATTR 0
+ #define COLOUR_ATTR 1
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+index d8905bc4..a5e01608 100644
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -100,6 +100,10 @@ extern void riceRomClosed(void);
+ #endif
+ #ifdef HAVE_GLIDE64
+ #include "../glide2gl/src/Glitch64/glitch64_vk.h"
++#define GLITCH64_OVERSCAN_UNIFORM  0
++#define GLITCH64_OVERSCAN_VERTICAL 1
++void glitch64_set_overscan(int lines, int mode);
++float glitch64_get_overscan_aspect_scale(void);
+ #endif
+ 
+ #if defined(HAVE_PARALLEL) || defined(HAVE_GLIDEN64)
+@@ -1679,6 +1683,10 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
+    info->geometry.max_width    = declared_max_width;
+    info->geometry.max_height   = declared_max_height;
+    info->geometry.aspect_ratio = screen_aspect_ratio;
++#ifdef HAVE_GLIDE64
++   if (gfx_plugin == GFX_GLIDE64)
++      info->geometry.aspect_ratio *= glitch64_get_overscan_aspect_scale();
++#endif
+ #ifdef HAVE_GLIDEN64
+    if (VRMode != VR_MODE_OFF)
+       info->geometry.aspect_ratio *= 2.0f; /* both eyes side by side */
+@@ -3206,6 +3214,32 @@ void update_variables(bool startup)
+           gfx_plugin_accuracy = 0;
+    }
+ 
++#ifdef HAVE_GLIDE64
++   {
++      static int prev_overscan_lines = 0;
++      static int prev_overscan_mode  = GLITCH64_OVERSCAN_UNIFORM;
++      int new_lines = 0;
++      int new_mode  = GLITCH64_OVERSCAN_UNIFORM;
++
++      var.key   = CORE_NAME "-glide64-overscan";
++      var.value = NULL;
++      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++         new_lines = atoi(var.value);
++
++      var.key   = CORE_NAME "-glide64-overscan-mode";
++      var.value = NULL;
++      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
++            && !strcmp(var.value, "vertical"))
++         new_mode = GLITCH64_OVERSCAN_VERTICAL;
++
++      glitch64_set_overscan(new_lines, new_mode);
++      if (!startup && (new_lines != prev_overscan_lines || new_mode != prev_overscan_mode))
++         reinit_screen = true;
++      prev_overscan_lines = new_lines;
++      prev_overscan_mode  = new_mode;
++   }
++#endif
++
+    var.key = "parallel-n64-virefresh";
+    var.value = NULL;
+ 
+@@ -4347,6 +4381,10 @@ void retro_run (void)
+             info.geometry.aspect_ratio = 16.0 / 9.0;
+             break;
+       }
++#ifdef HAVE_GLIDE64
++      if (gfx_plugin == GFX_GLIDE64)
++         info.geometry.aspect_ratio *= glitch64_get_overscan_aspect_scale();
++#endif
+ #ifdef HAVE_GLIDEN64
+       if (VRMode != VR_MODE_OFF)
+          info.geometry.aspect_ratio *= 2.0f;
+diff --git a/libretro/libretro_core_options.h b/libretro/libretro_core_options.h
+index 32061c76..529157b7 100644
+--- a/libretro/libretro_core_options.h
++++ b/libretro/libretro_core_options.h
+@@ -1199,6 +1199,41 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "disabled"
+     },
++    {
++        CORE_NAME "-glide64-overscan",
++        "Glide64: Crop Overscan",
++        NULL,
++        "Crop black overscan borders (in native 240p lines). Takes effect immediately.",
++        NULL,
++        "renderer",
++        {
++            {"0", "Disabled"},
++            {"2", "2 px"},
++            {"4", "4 px"},
++            {"6", "6 px"},
++            {"8", "8 px"},
++            {"10", "10 px"},
++            {"12", "12 px"},
++            {"14", "14 px"},
++            {"16", "16 px"},
++            {NULL, NULL},
++        },
++        "0"
++    },
++    {
++        CORE_NAME "-glide64-overscan-mode",
++        "Glide64: Overscan Crop Mode",
++        NULL,
++        "All Sides crops horizontally too to keep 4:3. Top & Bottom Only keeps full horizontal width and widens aspect ratio (great on 3:2/16:9 screens for games like Super Mario 64).",
++        NULL,
++        "renderer",
++        {
++            {"uniform", "All Sides (4:3)"},
++            {"vertical", "Top & Bottom Only"},
++            {NULL, NULL},
++        },
++        "uniform"
++    },
+ #endif
+ #ifdef HAVE_GLIDEN64
+     {
