@@ -114,13 +114,14 @@ package:
 	@echo "Packaging $(PAK_NAME).pak.zip and platform distributions..."
 	@mkdir -p $(DIST_DIR)
 	@rm -rf $(BUILD_DIR)/staging $(DIST_DIR)/$(PAK_NAME).pak.zip
-	@mkdir -p $(BUILD_DIR)/staging/cores/tg5040 $(BUILD_DIR)/staging/cores/tg5050 $(BUILD_DIR)/staging/cores/h700 $(BUILD_DIR)/staging/bin/tg5040 $(BUILD_DIR)/staging/bin/h700
+	@mkdir -p $(BUILD_DIR)/staging/cores/tg5040 $(BUILD_DIR)/staging/cores/tg5050 $(BUILD_DIR)/staging/cores/h700 $(BUILD_DIR)/staging/bin/tg5040 $(BUILD_DIR)/staging/bin/tg5050 $(BUILD_DIR)/staging/bin/h700
 	@cp pak.json launch.sh default*.cfg LICENSE README.md $(BUILD_DIR)/staging/
 	@chmod 0755 $(BUILD_DIR)/staging/launch.sh
 	@cp $(CORES_DIR)/tg5040/parallel_n64_libretro.so $(BUILD_DIR)/staging/cores/tg5040/
 	@cp $(CORES_DIR)/tg5050/parallel_n64_libretro.so $(BUILD_DIR)/staging/cores/tg5050/
 	@cp $(CORES_DIR)/h700/parallel_n64_libretro.so $(BUILD_DIR)/staging/cores/h700/
 	@cp bin/tg5040/minarch.elf $(BUILD_DIR)/staging/bin/tg5040/
+	@cp bin/tg5050/minarch.elf $(BUILD_DIR)/staging/bin/tg5050/
 	@cp bin/h700/minarch.elf $(BUILD_DIR)/staging/bin/h700/
 	@chmod 0755 $(BUILD_DIR)/staging/bin/*/minarch.elf
 	@cd $(BUILD_DIR)/staging && zip -r $(DIST_DIR)/$(PAK_NAME).pak.zip .
@@ -136,6 +137,8 @@ package:
 	@chmod 0755 $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/launch.sh
 	@cp default-smartpros.cfg $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/default.cfg
 	@cp $(CORES_DIR)/tg5050/parallel_n64_libretro.so $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/
+	@cp bin/tg5050/minarch.elf $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/
+	@chmod 0755 $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/launch.sh $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/minarch.elf
 	@cp launch.sh $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak/
 	@chmod 0755 $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak/launch.sh
 	@cp default.cfg $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak/default.cfg
