@@ -1,5 +1,5 @@
 PAK_NAME ?= $(shell jq -r .name pak.json 2>/dev/null || echo N64)
-PLATFORMS ?= tg5040 h700
+PLATFORMS ?= tg5040 tg5050 h700
 
 PARALLEL_N64_REPO ?= https://github.com/libretro/parallel-n64.git
 PARALLEL_N64_COMMIT ?= ab48ad59754e561c721ba73ef1953823639ed611
@@ -99,18 +99,23 @@ package:
 	@echo "Packaging $(PAK_NAME).pak.zip and platform distributions..."
 	@mkdir -p $(DIST_DIR)
 	@rm -rf $(BUILD_DIR)/staging $(DIST_DIR)/$(PAK_NAME).pak.zip
-	@mkdir -p $(BUILD_DIR)/staging/cores/tg5040 $(BUILD_DIR)/staging/cores/h700
+	@mkdir -p $(BUILD_DIR)/staging/cores/tg5040 $(BUILD_DIR)/staging/cores/tg5050 $(BUILD_DIR)/staging/cores/h700
 	@cp pak.json launch.sh default*.cfg LICENSE README.md $(BUILD_DIR)/staging/
 	@chmod 0755 $(BUILD_DIR)/staging/launch.sh
 	@cp $(CORES_DIR)/tg5040/parallel_n64_libretro.so $(BUILD_DIR)/staging/cores/tg5040/
+	@cp $(CORES_DIR)/tg5050/parallel_n64_libretro.so $(BUILD_DIR)/staging/cores/tg5050/
 	@cp $(CORES_DIR)/h700/parallel_n64_libretro.so $(BUILD_DIR)/staging/cores/h700/
 	@cd $(BUILD_DIR)/staging && zip -r $(DIST_DIR)/$(PAK_NAME).pak.zip .
-	@mkdir -p $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak
+	@mkdir -p $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak
 	@cp launch.sh $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak/
 	@chmod 0755 $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak/launch.sh
 	@cp default-smartpro.cfg $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak/default.cfg
 	@cp default-smartpro.cfg default-smartpros.cfg default-brick.cfg default-brickpro.cfg $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak/
 	@cp $(CORES_DIR)/tg5040/parallel_n64_libretro.so $(DIST_DIR)/Emus/tg5040/$(PAK_NAME).pak/
+	@cp launch.sh $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/
+	@chmod 0755 $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/launch.sh
+	@cp default-smartpros.cfg $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/default.cfg
+	@cp $(CORES_DIR)/tg5050/parallel_n64_libretro.so $(DIST_DIR)/Emus/tg5050/$(PAK_NAME).pak/
 	@cp launch.sh $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak/
 	@chmod 0755 $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak/launch.sh
 	@cp default.cfg $(DIST_DIR)/Emus/h700/$(PAK_NAME).pak/default.cfg

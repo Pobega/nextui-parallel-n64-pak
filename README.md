@@ -2,7 +2,7 @@
 
 A Nintendo 64 emulator pak for [NextUI](https://github.com/LoveRetro/NextUI) powered by [ParaLLEl N64](https://github.com/libretro/parallel-n64) (`aarch64` Ari64 dynarec + OpenGL ES 3.0) and Minarch hardware-accelerated rendering (`SET_HW_RENDER`).
 
-Supports both `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro) and `h700` (Anbernic RG35XX series) devices running NextUI.
+Supports `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro), `tg5050` (TrimUI Smart Pro S), and `h700` (Anbernic RG35XX series) devices running NextUI.
 
 ---
 
@@ -10,7 +10,7 @@ Supports both `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro) and `h
 
 - **AArch64 Dynamic Recompiler**: Uses the unified Ari64 `aarch64` dynarec (`NEW_DYNAREC=4`) tuned for Cortex-A53 handhelds.
 - **OpenGL ES 3.0 Hardware Rendering**: Direct GLES3 rendering via Minarch's `SET_HW_RENDER` pipeline.
-- **Handheld-Focused Video Plugins**: Ships slimmed down to **Rice** (default, fastest on Cortex-A53 handhelds) and **Glide64** (high compatibility) — no heavy desktop/software plugins compiled in.
+- **Handheld-Focused Video Plugins**: Ships slimmed down to **Glide64** (default, high compatibility) and **Rice** (fastest on Cortex-A53 handhelds) — no heavy desktop/software plugins compiled in.
 - **D-Pad to Analog Stick Mapping**: Built-in curved quadratic ease-in D-Pad-to-Control-Stick mapping enabled by default on stickless handhelds (`default.cfg`, `default-brick.cfg`, `default-brickpro.cfg`).
 - **RetroAchievements Ready**: Exposes N64 RDRAM (`RETRO_MEMORY_SYSTEM_RAM`) for RetroAchievements support.
 
@@ -21,6 +21,7 @@ Supports both `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro) and `h
 - **NextUI** with MinArch OpenGL ES 3 hardware-rendering support (`SET_HW_RENDER`).
 - Compatible handheld:
   - **tg5040**: TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro (Allwinner A133p / PowerVR GE8300)
+  - **tg5050**: TrimUI Smart Pro S (Allwinner A523 / Mali-G57 MC1)
   - **h700**: Anbernic RG35XX Plus, RG35XX H, RG35XX SP, RG40XX (Allwinner H700 / Mali-G31 MP2)
 
 ---
@@ -30,7 +31,8 @@ Supports both `tg5040` (TrimUI Smart Pro, TrimUI Brick, TrimUI Brick Pro) and `h
 ### Manual Installation
 1. Download `N64.pak.zip` from releases or build it from source.
 2. Extract the archive into your SD card under your platform's emulator directory:
-   - For TrimUI Smart Pro / Brick: `/mnt/SDCARD/Emus/tg5040/N64.pak/`
+   - For TrimUI Smart Pro / Brick / Brick Pro: `/mnt/SDCARD/Emus/tg5040/N64.pak/`
+   - For TrimUI Smart Pro S: `/mnt/SDCARD/Emus/tg5050/N64.pak/`
    - For Anbernic RG35XX series: `/mnt/SDCARD/Emus/h700/N64.pak/`
 3. Alternatively, extract the unified multi-platform layout directly to `/mnt/SDCARD/Emus/$PLATFORM/N64.pak/`.
 
@@ -71,13 +73,13 @@ Supported formats:
 
 > **Tip (Single-stick / stickless handhelds)**: You can enable **Independent C-button Controls** (`parallel-n64-alt-map = enabled`) in **Options -> Emulator -> Input** (restart required) to map the four C-buttons directly to `X` (C-Up), `A` (C-Down), `L1` (C-Left), and `R1` (C-Right), with `SELECT` as L Trigger and `R2` as R Trigger.
 
-### Switching Video Plugins (Rice vs Glide64)
-**Rice** (`parallel-n64-gfxplugin = rice`) is enabled by default for maximum speed on PowerVR GE8300 and Mali-G31 MP2 handhelds.
+### Switching Video Plugins (Glide64 vs Rice)
+**Glide64** (`parallel-n64-gfxplugin = glide64`, tuned with `parallel-n64-gfxplugin-accuracy = medium` and `bilinear` filtering) is enabled by default for high compatibility and visual accuracy.
 
-If a game has visual glitches or missing effects in Rice, open the MinArch menu (**Options -> Emulator -> System -> RDP Plugin**) and switch `parallel-n64-gfxplugin` to **`glide64`** (`Glide64`, tuned with `parallel-n64-gfxplugin-accuracy = medium` and `bilinear` filtering). Save as a per-game override if you only want Glide64 for specific titles.
+If a game needs extra CPU/GPU headroom on lower-clocked devices, open the MinArch menu (**Options -> Emulator -> System -> RDP Plugin**) and switch `parallel-n64-gfxplugin` to **`rice`** (`Rice`). Save as a per-game override if you only want Rice for specific titles.
 
 ### Key Default Options
-- `minarch_cpu_speed = Performance`, `minarch_rewind_enable = Off`: Keeps CPU clocks maxed and avoids rewind state overhead.
+- `minarch_cpu_speed = Performance`, `minarch_sync_reference = Auto`, `minarch_rewind_enable = Off`: Keeps CPU clocks maxed, adapts frame sync cleanly, and avoids rewind state overhead.
 - `parallel-n64-cpucore = dynamic_recompiler`: Uses the Ari64 `aarch64` dynarec.
 - `parallel-n64-rspplugin = hle`: Fast HLE RSP audio/graphics processing.
 - `parallel-n64-disable_expmem = enabled`: Enables 8 MB Expansion Pak RAM.
@@ -96,17 +98,17 @@ If a game has visual glitches or missing effects in Rice, open the MinArch menu 
 
 The build system uses official LoveRetro cross-compiler toolchains:
 - `ghcr.io/loveretro/tg5040-toolchain:latest` (GCC 8.3.0 + GLIBC)
+- `ghcr.io/loveretro/tg5050-toolchain:latest` (GCC + GLIBC)
 - `ghcr.io/loveretro/h700-toolchain:latest` (GCC 8.3.0 + GLIBC)
 
 ### Build Targets
 ```bash
-# Build both tg5040 and h700 cores and create dist/N64.pak.zip
+# Build tg5040, tg5050, and h700 cores and create dist/N64.pak.zip
 make release
 
-# Build tg5040 core only
+# Build a single platform core
 make build-tg5040
-
-# Build h700 core only
+make build-tg5050
 make build-h700
 
 # Package release zip and standalone platform folders

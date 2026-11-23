@@ -11,9 +11,9 @@ mkdir -p "$CHEATS_PATH/$EMU_TAG"
 HOME="$USERDATA_PATH"
 cd "$HOME" || exit 1
 
-echo 1 >/sys/devices/system/cpu/cpu1/online 2>/dev/null
-echo 1 >/sys/devices/system/cpu/cpu2/online 2>/dev/null
-echo 1 >/sys/devices/system/cpu/cpu3/online 2>/dev/null
+for c in 1 2 3 4 5 6 7; do
+	[ -w "/sys/devices/system/cpu/cpu${c}/online" ] && echo 1 > "/sys/devices/system/cpu/cpu${c}/online" 2>/dev/null
+done
 
 if [ -n "$PLATFORM" ] && [ -f "$PAK_DIR/cores/$PLATFORM/${EMU_EXE}_libretro.so" ]; then
 	CORE_SO="$PAK_DIR/cores/$PLATFORM/${EMU_EXE}_libretro.so"
