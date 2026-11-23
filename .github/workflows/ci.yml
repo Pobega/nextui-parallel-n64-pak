@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - poc/bundled-minarch
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-cores:
+    name: Build Core (${{ matrix.platform }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [tg5040, tg5050, h700]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.platform }} core
+        run: |
+          make build-${{ matrix.platform }}
+
+      - name: Fix file permissions for upload
+        run: sudo chown -R "$USER:$USER" build/cores
+
+      - name: Upload ${{ matrix.platform }} core
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-${{ matrix.platform }}
+          path: build/cores/${{ matrix.platform }}/parallel_n64_libretro.so
+
+  package:
+    name: Package N64.pak
+    runs-on: ubuntu-24.04
+    needs: build-cores
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download tg5040 core
+        uses: actions/download-artifact@v4
+        with:
+          name: core-tg5040
+          path: build/cores/tg5040
+
+      - name: Download tg5050 core
+        uses: actions/download-artifact@v4
+        with:
+          name: core-tg5050
+          path: build/cores/tg5050
+
+      - name: Download h700 core
+        uses: actions/download-artifact@v4
+        with:
+          name: core-h700
+          path: build/cores/h700
+
+      - name: Ensure executable permissions
+        run: chmod +x build/cores/*/parallel_n64_libretro.so launch.sh
+
+      - name: Package pak
+        run: |
+          make package
+          unzip -l dist/N64.pak.zip
+
+      - name: Upload N64.pak.zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: N64.pak.zip
+          path: dist/N64.pak.zip
