@@ -54,6 +54,10 @@ $(SRC_DIR)/.patched: $(wildcard $(CURDIR)/patches/*.patch)
 
 build: $(foreach p,$(PLATFORMS),build-$(p))
 
+GLES3_tg5040 := 1
+GLES3_tg5050 := 0
+GLES3_h700   := 1
+
 define BUILD_PLATFORM_RULE
 build-$(1): src
 	@echo "Building parallel_n64_libretro.so for $(1)..."
@@ -66,15 +70,26 @@ build-$(1): src
 			cd /workspace/build/parallel-n64 && \
 			rm -f parallel_n64_libretro.so && \
 			find . \( -name "*.o" -o -name "*.d" \) -delete && \
-			export CFLAGS="-mcpu=cortex-a53 -mtune=cortex-a53" && \
-			export CXXFLAGS="-mcpu=cortex-a53 -mtune=cortex-a53" && \
-			export LDFLAGS="-mcpu=cortex-a53 -mtune=cortex-a53" && \
+			EXTRA_INC=""; \
+			if [ ! -f /opt/aarch64-nextui-linux-gnu/aarch64-nextui-linux-gnu/libc/usr/include/KHR/khrplatform.h ] && [ -f /opt/aarch64-nextui-linux-gnu/aarch64-nextui-linux-gnu/libc/usr/include/SDL2/SDL_opengles2_khrplatform.h ]; then \
+				mkdir -p /tmp/khronos/KHR /tmp/khronos/EGL; \
+				ln -sf /opt/aarch64-nextui-linux-gnu/aarch64-nextui-linux-gnu/libc/usr/include/SDL2/SDL_opengles2_khrplatform.h /tmp/khronos/KHR/khrplatform.h; \
+				[ -f /opt/aarch64-nextui-linux-gnu/aarch64-nextui-linux-gnu/libc/usr/include/EGL/egl.h ] || : > /tmp/khronos/EGL/egl.h; \
+				EXTRA_INC="-isystem /tmp/khronos"; \
+			fi; \
+			EXTRA_LD=""; \
+			if [ -f /opt/aarch64-nextui-linux-gnu/aarch64-nextui-linux-gnu/libc/usr/lib/libmali.so ]; then \
+				EXTRA_LD="-lmali"; \
+			fi; \
+			export CFLAGS="-mcpu=cortex-a53 -mtune=cortex-a53 $$$$EXTRA_INC" && \
+			export CXXFLAGS="-mcpu=cortex-a53 -mtune=cortex-a53 $$$$EXTRA_INC" && \
+			export LDFLAGS="-mcpu=cortex-a53 -mtune=cortex-a53 $$$$EXTRA_LD" && \
 			make -j$$$$(nproc) \
 				platform=unix \
 				ARCH=aarch64 \
 				WITH_DYNAREC=aarch64 \
 				GLES=1 \
-				GLES3=1 \
+				GLES3=$(GLES3_$(1)) \
 				HAVE_PARALLEL=0 \
 				HAVE_PARALLEL_RSP=0 \
 				HAVE_GLIDEN64=0 \
