@@ -1,9 +1,8 @@
 diff --git a/mupen64plus-core/src/plugin/audio_libretro/audio_backend_libretro.c b/mupen64plus-core/src/plugin/audio_libretro/audio_backend_libretro.c
+index a56334cb..ecb4f6f0 100644
 --- a/mupen64plus-core/src/plugin/audio_libretro/audio_backend_libretro.c
 +++ b/mupen64plus-core/src/plugin/audio_libretro/audio_backend_libretro.c
-@@ -127,6 +127,10 @@ static void emit_frames(size_t n)
-       size_t ret = audio_batch_cb(out, remaining);
-       if (ret == 0)
+@@ -129,6 +129,10 @@ static void emit_frames(size_t n)
           break;                          /* frontend backpressure; keep the
                                            * remainder rather than stall the
                                            * emulator */

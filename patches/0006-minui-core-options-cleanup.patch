@@ -1,0 +1,346 @@
+diff --git a/libretro/libretro_core_options.h b/libretro/libretro_core_options.h
+index 6e929de8..13c2fc83 100644
+--- a/libretro/libretro_core_options.h
++++ b/libretro/libretro_core_options.h
+@@ -101,11 +101,6 @@ struct retro_core_option_v2_category option_cats_us[] = {
+       "Configure stereoscopic 3D and VR headset options (GLideN64)."
+    },
+ #endif
+-   {
+-      "aleck64",
+-      "Aleck64",
+-      "Aleck64 arcade dipswitches (only used by Aleck64 MAME romsets)."
+-   },
+    {
+       "hacks",
+       "Emulation Hacks",
+@@ -117,9 +112,9 @@ struct retro_core_option_v2_category option_cats_us[] = {
+ struct retro_core_option_v2_definition option_defs_us[] = {
+     {
+         CORE_NAME "-gfxplugin",
+-        "RDP Plugin",
++        "RDP Plugin (Requires Restart)",
+         NULL,
+-        "Reality Display Processor plugin.",
++        "Reality Display Processor plugin. (Requires Restart)",
+         NULL,
+         "system",
+         {
+@@ -161,9 +156,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+     },
+     {
+         CORE_NAME "-rspplugin",
+-        "RSP Plugin",
++        "RSP Plugin (Requires Restart)",
+         NULL,
+-        "Reality Signal Processor plugin.",
++        "Reality Signal Processor plugin. (Requires Restart)",
+         NULL,
+         "system",
+         {
+@@ -181,9 +176,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+     },
+     {
+         CORE_NAME "-cpucore",
+-        "CPU Core",
++        "CPU Core (Requires Restart)",
+         NULL,
+-        "CPU emulation mode.",
++        "CPU emulation mode. (Requires Restart)",
+         NULL,
+         "system",
+         {
+@@ -194,7 +189,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+             {"dynamic_recompiler", "Dynamic Recompiler (Hacktarux)"},
+             {"dynamic_recompiler_ari64", "Dynamic Recompiler (Ari64)"},
+ #elif defined(NEW_DYNAREC)
+-            {"dynamic_recompiler", "Dynamic Recompiler (Ari64)"},
++            {"dynamic_recompiler", "Dynarec (Ari64)"},
+ #else
+             {"dynamic_recompiler", "Dynamic Recompiler"},
+ #endif
+@@ -217,23 +212,23 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+     },
+     {
+         CORE_NAME "-disable_expmem",
+-        "Enable Expansion Pak RAM",
++        "Expansion Pak RAM (Requires Restart)",
+         NULL,
+-        "Give the console 8MB of RAM instead of 4MB, as the Expansion Pak does. Games that require the Pak (Donkey Kong 64, Majora's Mask) will not boot with this disabled. Applied when content starts.",
++        "(Requires Restart) Give the console 8MB of RAM instead of 4MB, as the Expansion Pak does. Games that require the Pak (Donkey Kong 64, Majora's Mask) will not boot with this disabled.",
+         NULL,
+         "system",
+         {
+-            { "disabled", NULL },
+-            { "enabled", NULL },
++            { "disabled", "Disabled (4 MB)" },
++            { "enabled", "Enabled (8 MB)" },
+             { NULL, NULL },
+         },
+         "enabled"
+     },
+     {
+         CORE_NAME "-64dd-hardware",
+-        "64DD Hardware",
++        "64DD Hardware (Requires Restart)",
+         NULL,
+-        "Treat content without a recognised cartridge or disk header as a 64DD disk. Development disks and MAME/SDK dumps carry no header marker; regular cartridges and retail D64 images are identified by their header and unaffected by this setting.",
++        "(Requires Restart) Treat content without a recognised cartridge or disk header as a 64DD disk. Development disks and MAME/SDK dumps carry no header marker; regular cartridges and retail D64 images are identified by their header and unaffected by this setting.",
+         NULL,
+         "system",
+         {
+@@ -363,9 +358,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+     },
+     {
+         CORE_NAME "-goldeneye-tlb-hack",
+-        "GoldenEye TLB Mapping Hack (Restart)",
++        "GoldenEye TLB Hack (Requires Restart)",
+         NULL,
+-        "Map GoldenEye's demand-paged 0x7F000000 code segment directly onto the ROM, bypassing the game's own TLB pager (ari64 dynarec only). Historically required for GoldenEye to run at all; on desktop-class hosts the accurate path now measures just as fast. Disable for hardware-faithful TLB behaviour or for modified ROMs that relocate the game segment, which the mapping would corrupt.",
++        "(Requires Restart) Map GoldenEye's demand-paged 0x7F000000 code segment directly onto the ROM, bypassing the game's own TLB pager (ari64 dynarec only). Historically required for GoldenEye to run at all; on desktop-class hosts the accurate path now measures just as fast. Disable for hardware-faithful TLB behaviour or for modified ROMs that relocate the game segment, which the mapping would corrupt.",
+         NULL,
+         "hacks",
+         {
+@@ -412,9 +407,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+ #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+     {
+         CORE_NAME "-screensize",
+-        "Resolution",
++        "Resolution (Requires Restart)",
+         NULL,
+-        "Render resolution for gl renderers. Restart required.",
++        "Render resolution for GL renderers. (Requires Restart)",
+         NULL,
+         "renderer",
+         {
+@@ -1192,9 +1187,9 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+ #ifdef HAVE_GLIDE64
+     {
+         CORE_NAME "-glide64-shared-shader",
+-        "Glide64: OpenGL Shared Shader (Restart)",
++        "Glide64: Shared Shader (Requires Restart)",
+         NULL,
+-        "On OpenGL, one shader for every colour combiner is built when the game loads and draws each new combiner until its own shader is ready: compiled in the background where the driver can, else at the next load. Avoids stutter when a game first uses a combiner. Disabled compiles each combiner's own shader when it is first met, as before.",
++        "(Requires Restart) On OpenGL, one shader for every colour combiner is built when the game loads and draws each new combiner until its own shader is ready: compiled in the background where the driver can, else at the next load. Avoids stutter when a game first uses a combiner. Disabled compiles each combiner's own shader when it is first met, as before.",
+         NULL,
+         "renderer",
+         {
+@@ -2042,218 +2037,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         "C-Right"
+     },
+ #endif
+-    {
+-        CORE_NAME "-aleck64-testmode",
+-        "Aleck64: Test Mode",
+-        "Test Mode",
+-        "Boot the arcade board's test menu instead of the game.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"disabled", NULL},
+-            {"enabled", NULL},
+-            { NULL, NULL },
+-        },
+-        "disabled"
+-    },
+-    {
+-        CORE_NAME "-aleck64-coinage",
+-        "Aleck64: Coinage",
+-        "Coinage",
+-        "Coins needed per credit (Star Soldier, Vivid Dolls, Hi Pai Paradise 1/2).",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"1 Coin 1 Credit", NULL},
+-            {"1 Coin 2 Credits", NULL},
+-            {"1 Coin 3 Credits", NULL},
+-            {"1 Coin 4 Credits", NULL},
+-            {"2 Coins 1 Credit", NULL},
+-            {"3 Coins 1 Credit", NULL},
+-            {"4 Coins 1 Credit", NULL},
+-            {"5 Coins 1 Credit", NULL},
+-            { NULL, NULL },
+-        },
+-        "1 Coin 1 Credit"
+-    },
+-    {
+-        CORE_NAME "-aleck64-difficulty",
+-        "Aleck64: Difficulty",
+-        "Difficulty",
+-        "Game difficulty (Star Soldier, Vivid Dolls, Hi Pai Paradise 1/2).",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"Normal", NULL},
+-            {"Easy", NULL},
+-            {"Hard", NULL},
+-            {"Hardest", NULL},
+-            { NULL, NULL },
+-        },
+-        "Normal"
+-    },
+-    {
+-        CORE_NAME "-aleck64-demosound",
+-        "Aleck64: Demo Sounds",
+-        "Demo Sounds",
+-        "Play sound in attract mode (Star Soldier, Hi Pai Paradise 1/2).",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"enabled", NULL},
+-            {"disabled", NULL},
+-            { NULL, NULL },
+-        },
+-        "enabled"
+-    },
+-    {
+-        CORE_NAME "-aleck64-language",
+-        "Aleck64: Language (Star Soldier)",
+-        "Language (Star Soldier)",
+-        "In-game language for Star Soldier: Vanishing Earth.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"English", NULL},
+-            {"Japanese", NULL},
+-            { NULL, NULL },
+-        },
+-        "English"
+-    },
+-    {
+-        CORE_NAME "-aleck64-players",
+-        "Aleck64: Players (Star Soldier)",
+-        "Players (Star Soldier)",
+-        "Number of players supported by the cabinet.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"3", NULL},
+-            {"4", NULL},
+-            {"2", NULL},
+-            {"1", NULL},
+-            { NULL, NULL },
+-        },
+-        "3"
+-    },
+-    {
+-        CORE_NAME "-aleck64-joystick",
+-        "Aleck64: Joystick Type (Star Soldier)",
+-        "Joystick Type (Star Soldier)",
+-        "Cabinet joystick type.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"2D", NULL},
+-            {"3D", NULL},
+-            { NULL, NULL },
+-        },
+-        "2D"
+-    },
+-    {
+-        CORE_NAME "-aleck64-autolevel",
+-        "Aleck64: Auto Level (Star Soldier)",
+-        "Auto Level (Star Soldier)",
+-        "Auto level speed.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"Normal", NULL},
+-            {"Slow", NULL},
+-            {"Fast1", NULL},
+-            {"Fast2", NULL},
+-            { NULL, NULL },
+-        },
+-        "Normal"
+-    },
+-    {
+-        CORE_NAME "-aleck64-rapid",
+-        "Aleck64: Rapid Fire (Star Soldier)",
+-        "Rapid Fire (Star Soldier)",
+-        "Enable rapid fire.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"disabled", NULL},
+-            {"enabled", NULL},
+-            { NULL, NULL },
+-        },
+-        "disabled"
+-    },
+-    {
+-        CORE_NAME "-aleck64-extend",
+-        "Aleck64: Extend (Star Soldier)",
+-        "Extend (Star Soldier)",
+-        "Score for an extra life.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"30,000,000", NULL},
+-            {"50,000,000", NULL},
+-            {"70,000,000", NULL},
+-            {"None", NULL},
+-            { NULL, NULL },
+-        },
+-        "30,000,000"
+-    },
+-    {
+-        CORE_NAME "-aleck64-lives",
+-        "Aleck64: Lives (Vivid Dolls)",
+-        "Lives (Vivid Dolls)",
+-        "Number of lives.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"4", NULL},
+-            {"3", NULL},
+-            {"2", NULL},
+-            {"1", NULL},
+-            { NULL, NULL },
+-        },
+-        "4"
+-    },
+-    {
+-        CORE_NAME "-aleck64-freeplay",
+-        "Aleck64: Free Play (Hi Pai Paradise)",
+-        "Free Play (Hi Pai Paradise)",
+-        "Play without credits.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"disabled", NULL},
+-            {"enabled", NULL},
+-            { NULL, NULL },
+-        },
+-        "disabled"
+-    },
+-    {
+-        CORE_NAME "-aleck64-continue",
+-        "Aleck64: Allow Continue (Hi Pai Paradise)",
+-        "Allow Continue (Hi Pai Paradise)",
+-        "Allow continuing after a loss.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"disabled", NULL},
+-            {"enabled", NULL},
+-            { NULL, NULL },
+-        },
+-        "disabled"
+-    },
+-    {
+-        CORE_NAME "-aleck64-kuitan",
+-        "Aleck64: Kuitan (Hi Pai Paradise)",
+-        "Kuitan (Hi Pai Paradise)",
+-        "Mahjong kuitan rule.",
+-        NULL,
+-        "aleck64",
+-        {
+-            {"disabled", NULL},
+-            {"enabled", NULL},
+-            { NULL, NULL },
+-        },
+-        "disabled"
+-    },
+     { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },
+ };
+ 

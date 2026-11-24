@@ -1,5 +1,5 @@
 diff --git a/libretro/libretro.c b/libretro/libretro.c
-index ff800bd2..12d49688 100644
+index 29e36816..87bc66f3 100644
 --- a/libretro/libretro.c
 +++ b/libretro/libretro.c
 @@ -162,7 +162,10 @@ int frame_break = 0;

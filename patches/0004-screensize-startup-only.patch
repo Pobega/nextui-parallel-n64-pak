@@ -1,7 +1,8 @@
 diff --git a/libretro/libretro.c b/libretro/libretro.c
+index 87bc66f3..a4b1d43f 100644
 --- a/libretro/libretro.c
 +++ b/libretro/libretro.c
-@@ -2695,29 +2695,36 @@ void update_variables(bool startup)
+@@ -2664,29 +2664,36 @@ void update_variables(bool startup)
        resample_hq_set_quality(enhanced_taps);
     }
  

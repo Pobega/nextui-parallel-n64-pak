@@ -1,8 +1,8 @@
 diff --git a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
-index da346338..80dec0a7 100644
+index 8c5a3d4a..3506840e 100644
 --- a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
 +++ b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
-@@ -191,10 +191,12 @@ void inputGetKeys_default_descriptor(void)
+@@ -163,10 +163,12 @@ void inputGetKeys_default_descriptor(void)
     else
     {
        #define standard_map(PAD) \
@@ -19,7 +19,7 @@ index da346338..80dec0a7 100644
        { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2,     "C Buttons Mode" },\
        { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2,     "Z Trigger" },\
        { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R,      "R Shoulder" },\
-@@ -1147,7 +1149,7 @@ static void inputGetKeys_mouse( int Control, BUTTONS *Keys )
+@@ -1005,7 +1007,7 @@ static void inputGetKeys_mouse( int Control, BUTTONS *Keys )
  static void inputGetKeys_default( int Control, BUTTONS *Keys )
  {
     bool cbuttons_mode = false;
@@ -28,7 +28,7 @@ index da346338..80dec0a7 100644
     int16_t analogX    = 0;
     int16_t analogY    = 0;
     Keys->Value        = 0;
-@@ -1158,9 +1160,9 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
+@@ -1016,9 +1018,9 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
        return;
     }
  
@@ -40,7 +40,7 @@ index da346338..80dec0a7 100644
  
     if (alternate_mapping)
     {
-@@ -1175,23 +1177,28 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
+@@ -1033,23 +1035,28 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
     }
     else
     {

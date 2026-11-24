@@ -12,7 +12,7 @@ index c02afc37..1489e4f4 100644
                 $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c
  endif
 diff --git a/libretro/libretro.c b/libretro/libretro.c
-index ff800bd2..702bd17a 100644
+index ff800bd2..29e36816 100644
 --- a/libretro/libretro.c
 +++ b/libretro/libretro.c
 @@ -532,11 +532,22 @@ static void core_settings_autoselect_gfx_plugin(void)
@@ -26,12 +26,12 @@ index ff800bd2..702bd17a 100644
 +#if defined(HAVE_GLIDEN64)
 +      gfx_plugin = GFX_GLIDEN64;
 +      return;
-+#elif defined(HAVE_RICE)
-+      gfx_plugin = GFX_RICE;
-+      return;
 +#elif defined(HAVE_GLIDE64)
        gfx_plugin = GFX_GLIDE64;
        return;
++#elif defined(HAVE_RICE)
++      gfx_plugin = GFX_RICE;
++      return;
 +#elif defined(HAVE_GLN64)
 +      gfx_plugin = GFX_GLN64;
 +      return;
@@ -45,10 +45,10 @@ index ff800bd2..702bd17a 100644
        case GFX_GLIDE64:   current_rdp_type = RDP_PLUGIN_GLIDE64;   break;
 +#ifdef HAVE_GLIDEN64
        default:            current_rdp_type = RDP_PLUGIN_GLIDEN64;  break;
-+#elif defined(HAVE_RICE)
-+      default:            current_rdp_type = RDP_PLUGIN_RICE;      break;
-+#else
++#elif defined(HAVE_GLIDE64)
 +      default:            current_rdp_type = RDP_PLUGIN_GLIDE64;   break;
++#else
++      default:            current_rdp_type = RDP_PLUGIN_RICE;      break;
 +#endif
     }
     switch (rsp_plugin)
@@ -97,16 +97,16 @@ index ff800bd2..702bd17a 100644
           case GFX_PARALLEL:
 +#ifdef HAVE_GLIDEN64
              gfx_plugin = GFX_GLIDEN64;
-+#elif defined(HAVE_RICE)
-+            gfx_plugin = GFX_RICE;
 +#elif defined(HAVE_GLIDE64)
 +            gfx_plugin = GFX_GLIDE64;
++#elif defined(HAVE_RICE)
++            gfx_plugin = GFX_RICE;
 +#endif
              break;
           default:
              break;
 diff --git a/libretro/libretro_core_options.h b/libretro/libretro_core_options.h
-index 2812ff50..86631caa 100644
+index 2812ff50..7b76539f 100644
 --- a/libretro/libretro_core_options.h
 +++ b/libretro/libretro_core_options.h
 @@ -126,19 +126,35 @@ struct retro_core_option_v2_definition option_defs_us[] = {
@@ -137,15 +137,110 @@ index 2812ff50..86631caa 100644
 -#elif defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 +#elif defined(HAVE_GLIDEN64)
          "gliden64"
-+#elif defined(HAVE_RICE)
-+        "rice"
 +#elif defined(HAVE_GLIDE64)
 +        "glide64"
++#elif defined(HAVE_RICE)
++        "rice"
 +#elif defined(HAVE_GLN64)
 +        "gln64"
  #else
          "angrylion"
  #endif
+@@ -359,6 +375,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "enabled"
+     },
++#if defined(HAVE_PARALLEL) || defined(HAVE_THR_AL)
+     {
+         CORE_NAME "-upscaling",
+         "Upscaling Factor",
+@@ -391,6 +408,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "disabled"
+     },
++#endif
+ #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+     {
+         CORE_NAME "-screensize",
+@@ -621,6 +639,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         "0"
+     },
+ #endif
++#ifdef HAVE_THR_AL
+     {
+         CORE_NAME "-angrylion-vioverlay",
+         "Angrylion: VI Overlay",
+@@ -719,6 +738,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "disabled"
+     },
++#endif
++#ifdef HAVE_GLIDE64
+     {
+         CORE_NAME "-gfxplugin-accuracy",
+         "Glide64: GFX Accuracy",
+@@ -739,6 +760,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         "veryhigh"
+ #endif
+     },
++#endif
++#if defined(HAVE_GLIDE64) || defined(HAVE_THR_AL)
+     {
+         CORE_NAME "-filtering",
+         "Glide64: Texture Filtering",
+@@ -755,6 +778,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "automatic"
+     },
++#endif
++#ifdef HAVE_GLIDE64
+     {
+         CORE_NAME "-polyoffset-factor",
+         "Glide64: Polygon Offset Factor",
+@@ -822,6 +847,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         "-3.0"
+     },
+ #endif
++#endif
++#ifdef HAVE_GLIDEN64
+     {
+         CORE_NAME "-gliden64-viewport-hack",
+         "GLideN64: Widescreen Hack",
+@@ -1144,6 +1171,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "auto"
+     },
++#endif
++#if defined(HAVE_GLIDE64) && defined(HAVE_GLIDEN64)
+     {
+         CORE_NAME "-glide64-API",
+         "Glide64: Graphics API (Restart)",
+@@ -1159,6 +1188,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "auto"
+     },
++#endif
++#ifdef HAVE_GLIDE64
+     {
+         CORE_NAME "-glide64-shared-shader",
+         "Glide64: OpenGL Shared Shader (Restart)",
+@@ -1173,6 +1204,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "disabled"
+     },
++#endif
++#ifdef HAVE_GLIDEN64
+     {
+         CORE_NAME "-gliden64-EnableN64DepthCompare",
+         "GLideN64: N64 Depth Compare",
+@@ -1429,6 +1462,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+         },
+         "enabled"
+     },
++#endif
+     {
+         CORE_NAME "-send_allist_to_hle_rsp",
+         "Audio Processing",
 diff --git a/mupen64plus-core/src/device/rcp/rdp/rdp_core.c b/mupen64plus-core/src/device/rcp/rdp/rdp_core.c
 index 68153281..9b01b0cb 100644
 --- a/mupen64plus-core/src/device/rcp/rdp/rdp_core.c

@@ -1,8 +1,8 @@
 diff --git a/libretro/libretro.c b/libretro/libretro.c
-index 9720daf0..1f2ebe6f 100644
+index a4b1d43f..70ebb8a9 100644
 --- a/libretro/libretro.c
 +++ b/libretro/libretro.c
-@@ -721,21 +721,72 @@ static void core_settings_autoselect_rsp_plugin(void)
+@@ -709,107 +709,131 @@ static void core_settings_autoselect_rsp_plugin(void)
  
  }
  
@@ -72,8 +72,6 @@ index 9720daf0..1f2ebe6f 100644
 +    const char *active_plugin;
 +    const char *rdp_plugin_prefix;
 +    bool show_all_renderers;
-     bool dpad_changed = false;
-     bool dpad_was_shown = dpad_analog_shown;
  
 -    // If option categories are supported but
 -    // the option update display callback is not,
@@ -81,20 +79,6 @@ index 9720daf0..1f2ebe6f 100644
 -    // i.e. do nothing
      if (CoreOptionCategoriesSupported && !CoreOptionUpdateDisplayCbSupported)
          return false;
- 
-@@ -748,99 +799,69 @@ static bool set_variable_visibility(void)
-     if (dpad_analog_first_run || dpad_analog_shown != dpad_was_shown)
-     {
-         dpad_analog_first_run = false;
--        option_display.visible = dpad_analog_shown;
--        option_display.key = CORE_NAME "-dpad-to-analog-ramp";
--        environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
--        option_display.key = CORE_NAME "-dpad-to-analog-sensitivity";
--        environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
-+        set_option_visible(CORE_NAME "-dpad-to-analog-ramp", dpad_analog_shown);
-+        set_option_visible(CORE_NAME "-dpad-to-analog-sensitivity", dpad_analog_shown);
-         dpad_changed = true;
-     }
  
 -    // Get current plugin
      var.key = CORE_NAME "-gfxplugin";
@@ -105,7 +89,7 @@ index 9720daf0..1f2ebe6f 100644
 -    // Check if plugin has changed since last
 -    // call of this function
      if (!strcmp(rdp_plugin_last, rdp_plugin_current))
-         return dpad_changed;
+         return false;
  
      strncpy(rdp_plugin_last, rdp_plugin_current, sizeof(rdp_plugin_last));
 +    rdp_plugin_last[sizeof(rdp_plugin_last) - 1] = '\0';
@@ -215,7 +199,7 @@ index 9720daf0..1f2ebe6f 100644
  #endif
      return true;
 diff --git a/libretro/libretro_core_options.h b/libretro/libretro_core_options.h
-index ea5cc7f4..32061c76 100644
+index 7b76539f..6e929de8 100644
 --- a/libretro/libretro_core_options.h
 +++ b/libretro/libretro_core_options.h
 @@ -80,9 +80,9 @@ struct retro_core_option_v2_category option_cats_us[] = {
@@ -231,7 +215,7 @@ index ea5cc7f4..32061c76 100644
     },
     {
        "audio",
-@@ -377,7 +377,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -382,7 +382,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Render at a multiple of the console's resolution. ParaLLEl-RDP honours every factor; Angrylion renders at up to 4x and treats 8x as 4x.",
          NULL,
@@ -240,7 +224,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "1x", NULL },
              { "2x", NULL },
-@@ -395,7 +395,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -400,7 +400,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Pick texture mip levels as the console would, from a console pixel's footprint rather than an upscaled pixel's. Without it an upscaled render selects sharper levels, and games that use the level as a switch show the wrong image (the painting at the end of the castle corridor in Super Mario 64).",
          NULL,
@@ -249,16 +233,16 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -411,7 +411,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -416,7 +416,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
-         "Render resolution for GL renderers. (Requires Restart)",
+         "Render resolution for gl renderers. Restart required.",
          NULL,
 -        "video",
 +        "renderer",
          {
              { "320x240", NULL },
              { "640x480", NULL },
-@@ -437,7 +437,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -442,7 +442,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Force display aspect ratio.",
          NULL,
@@ -267,7 +251,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "normal", "Normal" },
              { "widescreen", "Widescreen" },
-@@ -452,7 +452,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -457,7 +457,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Scale upscaled images back to smaller size.",
          NULL,
@@ -276,7 +260,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disable", "disabled" },
              { "1/2", NULL },
-@@ -468,7 +468,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -473,7 +473,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Anti-aliasing is performed to minimize jagged edges in low-resolution polygons.",
          NULL,
@@ -285,7 +269,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -482,7 +482,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -487,7 +487,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Fullscreen post-process blur filter.",
          NULL,
@@ -294,7 +278,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -496,7 +496,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -501,7 +501,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Perform gamma correction using a dither pattern.",
          NULL,
@@ -303,7 +287,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -510,7 +510,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -515,7 +515,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Make Mach bands less apparent with 16-bit pixels.",
          NULL,
@@ -312,7 +296,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -524,7 +524,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -529,7 +529,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Filter for eliminating 'divots' (single-pixel holes created when multiple boundary edges overlap in one pixel) in anti-aliased pixels.",
          NULL,
@@ -321,7 +305,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -538,7 +538,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -543,7 +543,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "When upscaling, average the upscaled samples when a frame is read back into game memory instead of taking one sample per pixel. Can smooth framebuffer effects; changes what the game reads back. Takes effect on restart.",
          NULL,
@@ -330,7 +314,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -552,7 +552,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -557,7 +557,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Dither the averaged read-back down to the game's colour depth. Only applies with super-sampled read-back. Takes effect on restart.",
          NULL,
@@ -339,7 +323,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -566,7 +566,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -571,7 +571,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Use native resolution for texture rectangles.",
          NULL,
@@ -348,7 +332,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -580,7 +580,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -585,7 +585,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Make the CPU wait for the GPU to finish rendering at RDP full sync. Disabling can improve performance but breaks games that read rendered frames back from memory (e.g. Resident Evil 2 never starts its intro FMV); such games force this on automatically.",
          NULL,
@@ -357,7 +341,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -594,7 +594,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -599,7 +599,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Crop overscan border pixels.",
          NULL,
@@ -366,7 +350,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "0", NULL },
              { "2", NULL },
-@@ -641,7 +641,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -646,7 +646,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Accuracy and performance related post-processings.",
          NULL,
@@ -375,7 +359,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "Filtered", NULL },
              { "AA+Blur", NULL },
-@@ -660,7 +660,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -665,7 +665,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "How interlaced (480i) content is displayed. 'Weave' merges both fields (sharp but combs on motion), 'Bob' line-doubles the current field (no combing, slight shimmer). Affects 480i games like Kuru Kuru Fever or Hanabi de Doon and hi-res title screens.",
          NULL,
@@ -384,7 +368,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "weave", "Weave" },
              { "bob", "Bob" },
-@@ -674,7 +674,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -679,7 +679,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Make Mach bands less apparent with 16-bit pixels.",
          NULL,
@@ -393,7 +377,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -688,7 +688,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -693,7 +693,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Sacrifice accuracy for performance.",
          NULL,
@@ -402,7 +386,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "Low", NULL },
              { "Medium", NULL },
-@@ -703,7 +703,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -708,7 +708,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "'OFF' renders synchronously on the emulator thread: no worker pool, no command buffering, no thread synchronization. Numeric values use the threaded renderer with that many worker threads ('1' keeps the threaded pipeline with a single worker). 'All threads' uses the host's physical cores, at most 8. Every worker replays the whole command stream, so past 8 the duplicated work outweighs what more workers take off the spans, and a second thread on the same core only adds contention.",
          NULL,
@@ -411,7 +395,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "off", "disabled" },
              { "all threads", "All threads" },
-@@ -725,7 +725,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -730,7 +730,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Crop overscan border pixels.",
          NULL,
@@ -420,7 +404,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -741,7 +741,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -746,7 +746,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          NULL,
          NULL,
@@ -429,7 +413,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "low", "Low" },
              { "medium", "Medium" },
-@@ -763,7 +763,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -768,7 +768,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          NULL,
          NULL,
@@ -438,7 +422,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "automatic", "Auto" },
              { "N64 3-point", NULL },
-@@ -781,7 +781,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -786,7 +786,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          NULL,
          NULL,
@@ -447,7 +431,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "-5.0", NULL },
              { "-4.5", NULL },
-@@ -814,7 +814,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -819,7 +819,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          NULL,
          NULL,
@@ -456,7 +440,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "-5.0", NULL },
              { "-4.5", NULL },
-@@ -850,7 +850,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -855,7 +855,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Hack that adjusts the viewport to allow unstretched 16:9",
          NULL,
@@ -465,7 +449,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"disabled", NULL},
              {"enabled", NULL},
-@@ -865,7 +865,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -870,7 +870,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Render at N times the native resolution.",
          NULL,
@@ -474,7 +458,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"0", "disabled"},
              {"1", "1x"},
-@@ -886,7 +886,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -891,7 +891,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Select a Bilinear filtering method, 3point is the original system specific way.",
          NULL,
@@ -483,7 +467,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"standard", "Standard"},
              {"3point", "3-point"},
-@@ -901,7 +901,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -906,7 +906,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Anti-Aliasing level.",
          NULL,
@@ -492,7 +476,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"0", "disabled"},
              {"2", "2x"},
-@@ -919,7 +919,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -924,7 +924,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Fast Approximate Anti-Aliasing shader, moderately blur textures.",
          NULL,
@@ -501,7 +485,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"0", "disabled"},
              {"1", "enabled"},
-@@ -933,7 +933,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -938,7 +938,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Calculate per-pixel level of details to select texture mip levels and blend them with each other using LOD fraction.",
          NULL,
@@ -510,7 +494,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -947,7 +947,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -952,7 +952,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Frame/depth buffer emulation. Disabling it can shorten input lag for particular games, but also break some special effects.",
          NULL,
@@ -519,7 +503,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -965,7 +965,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -970,7 +970,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Copy auxiliary buffers to RDRAM. Fixes some game artifacts like Paper Mario intro.",
          NULL,
@@ -528,7 +512,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -979,7 +979,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -984,7 +984,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Color buffer copy to RDRAM. 'OFF' trades compatibility for performance.",
          NULL,
@@ -537,7 +521,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"Off", "disabled"},
              {"Sync", NULL},
-@@ -1001,7 +1001,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1006,7 +1006,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Always copy the color buffer from RDRAM. GLideN64 already does this by itself whenever it detects that the CPU painted the frame the VI is about to show, so this setting only adds a second, unconditional trigger for the titles that detection misses (Donkey Kong 64 anti-aliased shadows, some Indiana Jones effects). Needs Framebuffer Emulation on. Default off for the performance cost.",
          NULL,
@@ -546,7 +530,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1015,7 +1015,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1020,7 +1020,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Depth buffer copy to RDRAM (Off will trade compatibility for Performance).",
          NULL,
@@ -555,7 +539,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"Off", "disabled"},
              {"Software", NULL},
-@@ -1030,7 +1030,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1035,7 +1035,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "When to apply GLideN64's built-in per-game settings. 'Late' lets them override your choices below, 'Early' lets your choices win, 'OFF' ignores them entirely.",
          NULL,
@@ -564,7 +548,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"disabled", "disabled"},
              {"late", "Late"},
-@@ -1045,7 +1045,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1050,7 +1050,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Render backgrounds mode (HLE only). One piece (fast), Stripped (precise).",
          NULL,
@@ -573,7 +557,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"Stripped", NULL},
              {"OnePiece", NULL},
-@@ -1059,7 +1059,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1064,7 +1064,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Standard per-vertex lighting when disabled. Slightly different rendering.",
          NULL,
@@ -582,7 +566,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1073,7 +1073,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1078,7 +1078,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Make texrect coordinates continuous to avoid black lines between them.",
          NULL,
@@ -591,7 +575,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"Off", "disabled"},
              {"Auto", NULL},
-@@ -1088,7 +1088,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1093,7 +1093,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Enables inaccurate texture coordinate calculations. This can improve performance and texture pack compatibity at the cost of accuracy.",
          NULL,
@@ -600,7 +584,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1102,7 +1102,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1107,7 +1107,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Render 2D texrects in native resolution to fix misalignment between parts of 2D image (example: Mario Kart driver selection portraits).",
          NULL,
@@ -609,7 +593,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"Disabled", "disabled"},
              {"Unoptimized", NULL},
-@@ -1117,7 +1117,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1122,7 +1122,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Do not use shaders to emulate N64 blending modes. Works faster on slow GPU. Can cause glitches.",
          NULL,
@@ -618,7 +602,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1135,7 +1135,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1140,7 +1140,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Enable writing of fragment depth. Some mobile GPUs do not support it, thus it's optional. Leave enabled.",
          NULL,
@@ -627,7 +611,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1157,7 +1157,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1162,7 +1162,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Automatic follows the frontend's video driver.",
          NULL,
@@ -636,7 +620,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"auto", "Automatic"},
              {"opengl", "OpenGL"},
-@@ -1174,7 +1174,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1179,7 +1179,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Vulkan draws Glide64 through GLideN64's Vulkan renderer. Automatic follows the frontend's video driver.",
          NULL,
@@ -645,16 +629,16 @@ index ea5cc7f4..32061c76 100644
          {
              {"opengl", "OpenGL"},
              {"vulkan", "Vulkan"},
-@@ -1191,7 +1191,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1196,7 +1196,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
-         "(Requires Restart) On OpenGL, one shader for every colour combiner is built when the game loads and draws each new combiner until its own shader is ready: compiled in the background where the driver can, else at the next load. Avoids stutter when a game first uses a combiner. Disabled compiles each combiner's own shader when it is first met, as before.",
+         "On OpenGL, one shader for every colour combiner is built when the game loads and draws each new combiner until its own shader is ready: compiled in the background where the driver can, else at the next load. Avoids stutter when a game first uses a combiner. Disabled compiles each combiner's own shader when it is first met, as before.",
          NULL,
 -        "video",
 +        "renderer",
          {
              {"disabled", NULL},
              {"enabled", NULL},
-@@ -1207,7 +1207,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1212,7 +1212,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Enable N64 depth compare instead of OpenGL standard one. Experimental, Fast mode will have more glitches.",
          NULL,
@@ -663,7 +647,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "Fast"},
-@@ -1222,7 +1222,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1227,7 +1227,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Use persistent storage for compiled shaders.",
          NULL,
@@ -672,7 +656,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1237,7 +1237,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1242,7 +1242,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Save texture cache to hard disk.",
          NULL,
@@ -681,7 +665,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1251,7 +1251,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1256,7 +1256,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Crop black borders from the overscan region around the screen.",
          NULL,
@@ -690,7 +674,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"Disabled", "disabled"},
              {"Enabled", "enabled"},
-@@ -1265,7 +1265,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1270,7 +1270,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Overscan top offset.",
          NULL,
@@ -699,7 +683,7 @@ index ea5cc7f4..32061c76 100644
          { OVERSCAN_VALUES },
          "0"
      },
-@@ -1275,7 +1275,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1280,7 +1280,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Overscan left offset.",
          NULL,
@@ -708,7 +692,7 @@ index ea5cc7f4..32061c76 100644
          { OVERSCAN_VALUES },
          "0"
      },
-@@ -1285,7 +1285,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1290,7 +1290,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Overscan right offset.",
          NULL,
@@ -717,7 +701,7 @@ index ea5cc7f4..32061c76 100644
          { OVERSCAN_VALUES },
          "0"
      },
-@@ -1295,7 +1295,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1300,7 +1300,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Overscan bottom offset.",
          NULL,
@@ -726,7 +710,7 @@ index ea5cc7f4..32061c76 100644
          { OVERSCAN_VALUES },
          "0"
      },
-@@ -1305,7 +1305,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1310,7 +1310,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Select Texture Filtering mode.",
          NULL,
@@ -735,7 +719,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"None", "disabled"},
              {"Smooth filtering 1", NULL},
-@@ -1324,7 +1324,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1329,7 +1329,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Various texture filters.",
          NULL,
@@ -744,7 +728,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"None", "disabled"},
              {"As Is", "Cached"},
-@@ -1350,7 +1350,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1355,7 +1355,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Ignore filtering for background textures.",
          NULL,
@@ -753,7 +737,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1364,7 +1364,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1369,7 +1369,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Enable high-res texture packs if available.",
          NULL,
@@ -762,7 +746,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1378,7 +1378,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1383,7 +1383,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Compress created texture caches.",
          NULL,
@@ -771,7 +755,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1392,7 +1392,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1397,7 +1397,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "This should be enabled unless it's an old RICE texture pack.",
          NULL,
@@ -780,7 +764,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1406,7 +1406,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1411,7 +1411,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Use an alternative method for High-Res paletted textures CRC calculations.",
          NULL,
@@ -789,7 +773,7 @@ index ea5cc7f4..32061c76 100644
          {
              {"False", "disabled"},
              {"True", "enabled"},
-@@ -1420,7 +1420,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1425,7 +1425,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Specifies INI Settings behaviour. This should really only contain essential options. Changing this can and will break ROM's, if the correct options aren't set manually. Some options may only be set via INI (fbInfoDisabled).",
          NULL,
@@ -798,7 +782,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", "Disable INI" },
              { "late", "Prioritize INI over Core Options" },
-@@ -1435,7 +1435,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1440,7 +1440,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Make plugin behave like Jabo in certain case to fix compatibility with legacy SM64 hacks. It adds undocumented behavior that may interfere with real N64 games (unlikely).",
          NULL,
@@ -807,7 +791,7 @@ index ea5cc7f4..32061c76 100644
          {
              { "disabled", NULL },
              { "enabled", NULL },
-@@ -1449,7 +1449,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1454,7 +1454,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          NULL,
          "Remove the black bars added by VI emulation of the FrameBuffer.",
          NULL,

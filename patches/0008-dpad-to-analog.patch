@@ -1,8 +1,8 @@
 diff --git a/libretro/libretro.c b/libretro/libretro.c
-index ff800bd2..0ec13f8c 100644
+index 70ebb8a9..d8905bc4 100644
 --- a/libretro/libretro.c
 +++ b/libretro/libretro.c
-@@ -285,6 +285,18 @@ int astick_snap_active                    = 0;
+@@ -288,6 +288,19 @@ int astick_snap_active                    = 0;
  int astick_snap_max_angle                 = 15;
  int astick_snap_min_displacement_percent  = 70;
  int astick_sensitivity                    = 100;
@@ -14,6 +14,7 @@ index ff800bd2..0ec13f8c 100644
 +#define DPAD_ANALOG_RAMP_MEDIUM_MS  220
 +#define DPAD_ANALOG_RAMP_SLOW_MS    320
 +int dpad_to_analog_mode                   = DPAD_ANALOG_DISABLED;
++static int dpad_last_active_mode          = DPAD_ANALOG_ONLY;
 +int dpad_analog_ramp_ms                   = DPAD_ANALOG_RAMP_MEDIUM_MS;
 +float dpad_analog_max_frac                = 1.0f;
 +static bool dpad_analog_shown             = true;
@@ -21,16 +22,13 @@ index ff800bd2..0ec13f8c 100644
  int first_time                            = 1;
  static bool frame_latched                 = false; /* a renderer finished a frame this slice */
  
-@@ -703,6 +715,8 @@ static bool set_variable_visibility(void)
-     size_t num_options = 0;
-     const char *rdp_plugin_current = "__NULL__";
-     const char *rdp_plugin_prefix = NULL;
+@@ -772,17 +785,33 @@ static bool set_variable_visibility(void)
+     const char *active_plugin;
+     const char *rdp_plugin_prefix;
+     bool show_all_renderers;
 +    bool dpad_changed = false;
 +    bool dpad_was_shown = dpad_analog_shown;
  
-     // If option categories are supported but
-     // the option update display callback is not,
-@@ -711,6 +725,23 @@ static bool set_variable_visibility(void)
      if (CoreOptionCategoriesSupported && !CoreOptionUpdateDisplayCbSupported)
          return false;
  
@@ -43,27 +41,73 @@ index ff800bd2..0ec13f8c 100644
 +    if (dpad_analog_first_run || dpad_analog_shown != dpad_was_shown)
 +    {
 +        dpad_analog_first_run = false;
-+        option_display.visible = dpad_analog_shown;
-+        option_display.key = CORE_NAME "-dpad-to-analog-ramp";
-+        environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
-+        option_display.key = CORE_NAME "-dpad-to-analog-sensitivity";
-+        environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
++        set_option_visible(CORE_NAME "-dpad-to-analog-ramp", dpad_analog_shown);
++        set_option_visible(CORE_NAME "-dpad-to-analog-sensitivity", dpad_analog_shown);
 +        dpad_changed = true;
 +    }
 +
-     // Get current plugin
      var.key = CORE_NAME "-gfxplugin";
      var.value = NULL;
-@@ -720,7 +751,7 @@ static bool set_variable_visibility(void)
-     // Check if plugin has changed since last
-     // call of this function
+     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+         rdp_plugin_current = var.value;
+ 
      if (!strcmp(rdp_plugin_last, rdp_plugin_current))
 -        return false;
 +        return dpad_changed;
  
      strncpy(rdp_plugin_last, rdp_plugin_current, sizeof(rdp_plugin_last));
+     rdp_plugin_last[sizeof(rdp_plugin_last) - 1] = '\0';
+@@ -839,6 +868,49 @@ static bool set_variable_visibility(void)
+     return true;
+ }
  
-@@ -3117,6 +3148,40 @@ void update_variables(bool startup)
++void libretro_toggle_dpad_to_analog(void)
++{
++    const char *next_value;
++    const char *log_label;
++    struct retro_variable var;
++    struct retro_message msg;
++
++    if (!environ_cb)
++        return;
++
++    if (dpad_to_analog_mode == DPAD_ANALOG_DISABLED)
++    {
++        dpad_to_analog_mode = dpad_last_active_mode;
++        if (dpad_to_analog_mode == DPAD_ANALOG_BOTH)
++        {
++            next_value = "both";
++            log_label = "D-Pad: Control Stick + D-Pad";
++        }
++        else
++        {
++            dpad_to_analog_mode = DPAD_ANALOG_ONLY;
++            next_value = "analog";
++            log_label = "D-Pad: Control Stick";
++        }
++    }
++    else
++    {
++        dpad_last_active_mode = dpad_to_analog_mode;
++        dpad_to_analog_mode = DPAD_ANALOG_DISABLED;
++        next_value = "disabled";
++        log_label = "D-Pad: Digital";
++    }
++
++    var.key = CORE_NAME "-dpad-to-analog";
++    var.value = next_value;
++    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLE, &var);
++    set_variable_visibility();
++
++    msg.msg = log_label;
++    msg.frames = 120;
++    environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
++}
++
+ static void setup_variables(void)
+ {
+    bool categoriesSupported = false;
+@@ -3168,6 +3240,42 @@ void update_variables(bool startup)
           inputGetKeys_default_descriptor();
     }
  
@@ -77,6 +121,8 @@ index ff800bd2..0ec13f8c 100644
 +      else if (!strcmp(var.value, "both"))
 +         dpad_to_analog_mode = DPAD_ANALOG_BOTH;
 +   }
++   if (dpad_to_analog_mode != DPAD_ANALOG_DISABLED)
++      dpad_last_active_mode = dpad_to_analog_mode;
 +
 +   var.key = CORE_NAME "-dpad-to-analog-ramp";
 +   var.value = NULL;
@@ -105,10 +151,10 @@ index ff800bd2..0ec13f8c 100644
     {
        struct retro_variable pk1var = { "parallel-n64-pak1" };
 diff --git a/libretro/libretro_core_options.h b/libretro/libretro_core_options.h
-index 2812ff50..3a2d6e28 100644
+index 13c2fc83..32061c76 100644
 --- a/libretro/libretro_core_options.h
 +++ b/libretro/libretro_core_options.h
-@@ -1527,6 +1527,54 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+@@ -1556,6 +1556,54 @@ struct retro_core_option_v2_definition option_defs_us[] = {
          },
          "disabled"
      },
@@ -164,7 +210,7 @@ index 2812ff50..3a2d6e28 100644
          CORE_NAME "-astick-deadzone",
          "Analog Deadzone",
 diff --git a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
-index 8c5a3d4a..da346338 100644
+index 3506840e..56725704 100644
 --- a/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
 +++ b/mupen64plus-core/src/plugin/emulate_game_controller_via_libretro.c
 @@ -31,6 +31,7 @@
@@ -216,7 +262,23 @@ index 8c5a3d4a..da346338 100644
  extern m64p_rom_header ROM_HEADER;
  
  /* Controller presence values, as written by libretro.c into pad_present[]
-@@ -610,6 +638,108 @@ void inputPollMouse(void)
+@@ -99,6 +127,7 @@ typedef void (*get_keys_t)(int, BUTTONS*);
+ static get_keys_t getKeys = inputGetKeys_default;
+ 
+ void inputInitiateCallback(const char *headername);
++extern void libretro_toggle_dpad_to_analog(void);
+ 
+ /* Entry point for the core's controller input backend: polls through the
+  * currently selected control profile (default, or a per-game alternate
+@@ -174,6 +203,7 @@ void inputGetKeys_default_descriptor(void)
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R,      "R Shoulder" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L,      "L Shoulder" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START,  "Start" },\
++      { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT, "Toggle D-Pad/Stick" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT,  "D-Pad Right" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,   "D-Pad Left" },\
+       { PAD, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN,   "D-Pad Down" },\
+@@ -612,6 +642,108 @@ void inputPollMouse(void)
     mouse_sampled = false;
  }
  
@@ -325,7 +387,7 @@ index 8c5a3d4a..da346338 100644
  /* Shared tail of every control profile: N64 stick, mouse-to-stick mode,
   * d-pad, Start, and the SELECT-driven profile toggle. */
  static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
-@@ -625,6 +755,8 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
+@@ -627,6 +759,8 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
     Keys->X_AXIS = sx;
     Keys->Y_AXIS = sy;
  
@@ -334,7 +396,7 @@ index 8c5a3d4a..da346338 100644
     /* VR laser - the controller's pointer drives the stick */
     if (Keys->X_AXIS == 0 && Keys->Y_AXIS == 0)
     {
-@@ -683,10 +815,20 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
+@@ -685,10 +819,20 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
           apply_mouse_button(Keys, mouse_wheel_down_btn);
     }
  
@@ -359,3 +421,26 @@ index 8c5a3d4a..da346338 100644
  
     /* Some Aleck64 games (Eleven Beat) probe the pad's d-pad to detect the
      * cabinet joystick type and error out unless all four bits read held,
+@@ -714,11 +858,17 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
+       if (dirs & 8u) apply_mouse_button(Keys, vr_aim_btn_right);
+    }
+ 
+-   /* SELECT toggles between the default and the per-game alternate
+-    * control profile (only meaningful when a game has one). In the
+-    * independent-C-button layout SELECT is L, so leave it alone there. */
+-   if (!alternate_mapping && PAD_HELD(RETRO_DEVICE_ID_JOYPAD_SELECT) && --timeout <= 0)
+-      inputInitiateCallback((const char*)ROM_HEADER.Name);
++   /* Toggle D-Pad-to-Stick mode on P1 rising edge. In independent-C-button
++    * layout SELECT is bound to L Trigger, so leave it alone there. */
++   if (!alternate_mapping && Control == 0)
++   {
++      static bool select_was_held = false;
++      bool held = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_SELECT);
++
++      if (held && !select_was_held)
++         libretro_toggle_dpad_to_analog();
++      select_was_held = held;
++   }
+ }
+ 
+ static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
